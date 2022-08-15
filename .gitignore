@@ -1,0 +1,14 @@
+cmd/server/server
+cmd/client/client
+cmd/client/results/results.json
+cmd/client/*.pdf
+cmd/client/*.svg
+*.json
+*.o
+*.a
+bench-pir/bench-pir
+bench-anon/bench-anon
+bench-creds/bench-creds
+.DS_Store
+vdpf/src/test
+/vendor
