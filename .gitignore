@@ -8,7 +8,8 @@ cmd/client/*.svg
 *.a
 bench-pir/bench-pir
 bench-anon/bench-anon
-bench-creds/bench-creds
+bench-anon/bench-anon
+bench-fss/bench-fss
 .DS_Store
 vdpf/src/test
 /vendor
