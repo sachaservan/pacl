@@ -1,6 +1,6 @@
-# Verifiable Distributed Point Functions
+# Private Access Control Lists
 
-Implementation of VDPFs in C with a Go wrapper. See the [paper](https://eprint.iacr.org/2021/580.pdf) for details.
+Implementation of PACLs for DPFs and VDPFs.
 
 ## Dependencies 
 * Go 1.13 or higher 
@@ -23,30 +23,23 @@ For optimal performance, you should compile the C code with clang (approximately
   - You'll also need llvm if you use clang. 
 - LLVM-AR: On Ubuntu run ```sudo apt install llvm```. On CentOS, ```sudo yum install llvm```.
 
+### 0) initialize the VDPF submodule ```git submodule update --init --recursive```. 
+
 ### 1) Compiling the C VDPF/DPF library
 ```
 go mod tidy
 cd src && make
 ```
 
-### 2a) Running tests (in C) 
-```
-./test
-```
-See also [```src/test.c```](src/test.c)
-
-### 2b) Running tests (in Go)
-```
-go test
-```
-See also [```dpf_test.go```](dpf_test.go)
+### 2) Running the benchmarks
+COMING SOON
 
 ## ⚠️ Important Warning
 <b>This implementation of is intended for *research purposes only*. The code has NOT been vetted by security experts. 
 As such, no portion of the code should be used in any real-world or production setting!</b>
 
 ## License
-Copyright © 2022 Sacha Servan-Schreiber and Simon Langowski
+Copyright © 2022 Sacha Servan-Schreiber
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
