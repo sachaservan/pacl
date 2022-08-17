@@ -24,154 +24,159 @@ const (
 
 func main() {
 
-	numTrials := 1000
+	numTrials := 10
 
 	// amortize the proof verification across numEval
-	numEvalPoints := []uint64{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024}
+	numEvalKeys := []uint64{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024}
+	numEvalSubkeys := []uint64{1, 10, 20}
 	domain := []uint{32}
 
 	i := 0
 	for _, fssDomain := range domain {
-		for _, numKeys := range numEvalPoints {
+		for _, numKeys := range numEvalKeys {
+			for _, numSubkeys := range numEvalSubkeys {
 
-			klpk, xpk, _ := paclpk.GenerateBenchmarkKeyList(numKeys, fssDomain, elliptic.P256())
-			klsk, xsk, _ := paclsk.GenerateBenchmarkKeyList(numKeys, fssDomain)
-			klsposs, xsposs, _ := paclsposs.GenerateBenchmarkKeyList(numKeys, fssDomain, paclsposs.DefaultGroup())
+				klpk, xpk, _ := paclpk.GenerateBenchmarkKeyList(numKeys, fssDomain, elliptic.P256(), paclpk.Inclusion, numSubkeys)
+				klsk, xsk, _ := paclsk.GenerateBenchmarkKeyList(numKeys, fssDomain, paclsk.Inclusion, numSubkeys)
+				klsposs, xsposs, _ := paclsposs.GenerateBenchmarkKeyList(
+					numKeys, fssDomain, paclsposs.DefaultGroup(), paclsposs.Inclusion, numSubkeys)
 
-			sharesPk := klpk.NewProof(0, xpk)
-			sharesSk := klsk.NewProof(0, xsk)
-			sharesSposs := klsposs.NewProof(0, xsposs)
+				sharesPk := klpk.NewProof(0, xpk)
+				sharesSk := klsk.NewProof(0, xsk)
+				sharesSposs := klsposs.NewProof(0, xsposs)
 
-			experiment := &Experiment{
-				FSSDomain: uint64(fssDomain),
-				NumKeys:   numKeys,
+				experiment := &Experiment{
+					FSSDomain: uint64(fssDomain),
+					NumKeys:   numKeys,
+				}
+
+				for trial := 0; trial < numTrials; trial++ {
+					// WARMUP
+					benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSEquality)
+					benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
+					benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSEquality)
+				}
+
+				// (V)DPF evaluation baseline
+				for trial := 0; trial < numTrials; trial++ {
+					// equality
+					timeEq := benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSEquality)
+					experiment.EqualityBaselineProcessingNS = append(experiment.EqualityBaselineProcessingNS, timeEq)
+
+					timeEq = benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
+					experiment.EqualityBaselineVerProcessingNS = append(experiment.EqualityBaselineVerProcessingNS, timeEq)
+
+					// inequality
+					timeIneq := benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSInequality)
+					experiment.InequalityBaselineProcessingNS = append(experiment.InequalityBaselineProcessingNS, timeIneq)
+
+					timeIneq = benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSInequality)
+					experiment.InequalityBaselineVerProcessingNS = append(experiment.InequalityBaselineVerProcessingNS, timeIneq)
+
+					// range
+					timeRange := benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSRange)
+					experiment.RangeBaselineProcessingNS = append(experiment.RangeBaselineProcessingNS, timeRange)
+
+					timeRange = benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSRange)
+					experiment.RangeBaselineVerProcessingNS = append(experiment.RangeBaselineVerProcessingNS, timeRange)
+
+				}
+
+				// DPF PACL (public key)
+				for trial := 0; trial < numTrials; trial++ {
+					// equality
+					timeEq := benchmarkPACLPublicKeyFSS(klpk, sharesPk[0], fssDomain, FSSEquality)
+					experiment.EqualityDPFPACLProcessingNS = append(experiment.EqualityDPFPACLProcessingNS, timeEq)
+
+					// inequality
+					timeIneq := benchmarkPACLPublicKeyFSS(klpk, sharesPk[0], fssDomain, FSSInequality)
+					experiment.InequalityDPFPACLProcessingNS = append(experiment.InequalityDPFPACLProcessingNS, timeIneq)
+
+					// range
+					timeRange := benchmarkPACLPublicKeyFSS(klpk, sharesPk[0], fssDomain, FSSRange)
+					experiment.RangeDPFPACLProcessingNS = append(experiment.RangeDPFPACLProcessingNS, timeRange)
+				}
+
+				// VDPF PACL (public key sposs)
+				for trial := 0; trial < numTrials; trial++ {
+					// equality
+					timeEq := benchmarkPACLPublicKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
+					experiment.EqualityVDPFPACLProcessingNS = append(experiment.EqualityVDPFPACLProcessingNS, timeEq)
+
+					// inequality
+					timeIneq := benchmarkPACLPublicKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSInequality)
+					experiment.InequalityVDPFPACLProcessingNS = append(experiment.InequalityVDPFPACLProcessingNS, timeIneq)
+
+					// range
+					timeRange := benchmarkPACLPublicKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSRange)
+					experiment.RangeVDPFPACLProcessingNS = append(experiment.RangeVDPFPACLProcessingNS, timeRange)
+				}
+
+				// DPF PACL (symmetric key)
+				for trial := 0; trial < numTrials; trial++ {
+					// equality
+					timeEq := benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSEquality)
+					experiment.EqualityDPFSKPACLProcessingNS = append(experiment.EqualityDPFSKPACLProcessingNS, timeEq)
+
+					// inequality
+					timeIneq := benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSInequality)
+					experiment.InequalityDPFSKPACLProcessingNS = append(experiment.InequalityDPFSKPACLProcessingNS, timeIneq)
+
+					// range
+					timeRange := benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSRange)
+					experiment.RangeDPFSKPACLProcessingNS = append(experiment.RangeDPFSKPACLProcessingNS, timeRange)
+				}
+
+				// VDPF PACL (symmetric key)
+				for trial := 0; trial < numTrials; trial++ {
+					// equality
+					timeEq := benchmarkPACLSymmetricKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
+					experiment.EqualityVDPFSKPACLProcessingNS = append(experiment.EqualityVDPFSKPACLProcessingNS, timeEq)
+
+					// inequality
+					timeIneq := benchmarkPACLSymmetricKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSInequality)
+					experiment.InequalityVDPFSKPACLProcessingNS = append(experiment.InequalityVDPFSKPACLProcessingNS, timeIneq)
+
+					// range
+					timeRange := benchmarkPACLSymmetricKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSRange)
+					experiment.RangeVDPFSKPACLProcessingNS = append(experiment.RangeVDPFSKPACLProcessingNS, timeRange)
+				}
+
+				fmt.Println("---------------------------------")
+				fmt.Printf("FSS domain:  %v\n", fssDomain)
+				fmt.Printf("Num keys:    %v\n", numKeys)
+				fmt.Printf("Num subkeys: %v\n", numSubkeys)
+				fmt.Println("---------------------------------")
+				fmt.Printf("DPF (x = a)              (size %v): %v\n", fssDomain, avg(experiment.EqualityBaselineProcessingNS))
+				fmt.Printf("DPF SK-PACL (x = a)      (size %v): %v\n", fssDomain, avg(experiment.EqualityDPFSKPACLProcessingNS))
+				fmt.Printf("DPF PACL (x = a)         (size %v): %v\n", fssDomain, avg(experiment.EqualityDPFPACLProcessingNS))
+				fmt.Printf("VDPF (x = a)             (size %v): %v\n", fssDomain, avg(experiment.EqualityBaselineVerProcessingNS))
+				fmt.Printf("VDPF SK PACL (x = a)     (size %v): %v\n", fssDomain, avg(experiment.EqualityVDPFSKPACLProcessingNS))
+				fmt.Printf("VDPF PACL (x = a)        (size %v): %v\n", fssDomain, avg(experiment.EqualityVDPFPACLProcessingNS))
+				fmt.Println("---------------------------------")
+				fmt.Printf("DPF (x < a)              (size %v): %v\n", fssDomain, avg(experiment.InequalityBaselineProcessingNS))
+				fmt.Printf("DPF SK-PACL (x < a)      (size %v): %v\n", fssDomain, avg(experiment.InequalityDPFSKPACLProcessingNS))
+				fmt.Printf("DPF PACL (x < a)         (size %v): %v\n", fssDomain, avg(experiment.InequalityDPFPACLProcessingNS))
+				fmt.Printf("VDPF (x < a)             (size %v): %v\n", fssDomain, avg(experiment.InequalityBaselineVerProcessingNS))
+				fmt.Printf("VDPF SK PACL (x < a)     (size %v): %v\n", fssDomain, avg(experiment.InequalityVDPFSKPACLProcessingNS))
+				fmt.Printf("VDPF PACL (x < a)        (size %v): %v\n", fssDomain, avg(experiment.InequalityVDPFPACLProcessingNS))
+				fmt.Println("---------------------------------")
+				fmt.Printf("DPF (a < x < b)          (size %v): %v\n", fssDomain, avg(experiment.RangeBaselineProcessingNS))
+				fmt.Printf("DPF SK-PACL (a < x < b)  (size %v): %v\n", fssDomain, avg(experiment.RangeDPFSKPACLProcessingNS))
+				fmt.Printf("DPF PACL (a < x < b)     (size %v): %v\n", fssDomain, avg(experiment.RangeDPFPACLProcessingNS))
+				fmt.Printf("VDPF (a < x < b)         (size %v): %v\n", fssDomain, avg(experiment.RangeBaselineVerProcessingNS))
+				fmt.Printf("VDPF SK PACL (a < x < b) (size %v): %v\n", fssDomain, avg(experiment.RangeVDPFSKPACLProcessingNS))
+				fmt.Printf("VDPF PACL (a < x < b)    (size %v): %v\n", fssDomain, avg(experiment.RangeVDPFPACLProcessingNS))
+				fmt.Println("---------------------------------")
+
+				experimentJSON, err := json.MarshalIndent(experiment, "", " ")
+				if err != nil {
+					panic(err)
+				}
+				ioutil.WriteFile("experiment"+fmt.Sprint(i)+".json", experimentJSON, 0644)
+				fmt.Println("File saved.")
+				i++
 			}
-
-			for trial := 0; trial < numTrials; trial++ {
-				// WARMUP
-				benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSEquality)
-				benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
-				benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSEquality)
-			}
-
-			// (V)DPF evaluation baseline
-			for trial := 0; trial < numTrials; trial++ {
-				// equality
-				timeEq := benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSEquality)
-				experiment.EqualityBaselineProcessingNS = append(experiment.EqualityBaselineProcessingNS, timeEq)
-
-				timeEq = benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
-				experiment.EqualityBaselineVerProcessingNS = append(experiment.EqualityBaselineVerProcessingNS, timeEq)
-
-				// inequality
-				timeIneq := benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSInequality)
-				experiment.InequalityBaselineProcessingNS = append(experiment.InequalityBaselineProcessingNS, timeIneq)
-
-				timeIneq = benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSInequality)
-				experiment.InequalityBaselineVerProcessingNS = append(experiment.InequalityBaselineVerProcessingNS, timeIneq)
-
-				// range
-				timeRange := benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSRange)
-				experiment.RangeBaselineProcessingNS = append(experiment.RangeBaselineProcessingNS, timeRange)
-
-				timeRange = benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSRange)
-				experiment.RangeBaselineVerProcessingNS = append(experiment.RangeBaselineVerProcessingNS, timeRange)
-
-			}
-
-			// DPF PACL (public key)
-			for trial := 0; trial < numTrials; trial++ {
-				// equality
-				timeEq := benchmarkPACLPublicKeyFSS(klpk, sharesPk[0], fssDomain, FSSEquality)
-				experiment.EqualityDPFPACLProcessingNS = append(experiment.EqualityDPFPACLProcessingNS, timeEq)
-
-				// inequality
-				timeIneq := benchmarkPACLPublicKeyFSS(klpk, sharesPk[0], fssDomain, FSSInequality)
-				experiment.InequalityDPFPACLProcessingNS = append(experiment.InequalityDPFPACLProcessingNS, timeIneq)
-
-				// range
-				timeRange := benchmarkPACLPublicKeyFSS(klpk, sharesPk[0], fssDomain, FSSRange)
-				experiment.RangeDPFPACLProcessingNS = append(experiment.RangeDPFPACLProcessingNS, timeRange)
-			}
-
-			// VDPF PACL (public key sposs)
-			for trial := 0; trial < numTrials; trial++ {
-				// equality
-				timeEq := benchmarkPACLPublicKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
-				experiment.EqualityVDPFPACLProcessingNS = append(experiment.EqualityVDPFPACLProcessingNS, timeEq)
-
-				// inequality
-				timeIneq := benchmarkPACLPublicKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSInequality)
-				experiment.InequalityVDPFPACLProcessingNS = append(experiment.InequalityVDPFPACLProcessingNS, timeIneq)
-
-				// range
-				timeRange := benchmarkPACLPublicKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSRange)
-				experiment.RangeVDPFPACLProcessingNS = append(experiment.RangeVDPFPACLProcessingNS, timeRange)
-			}
-
-			// DPF PACL (symmetric key)
-			for trial := 0; trial < numTrials; trial++ {
-				// equality
-				timeEq := benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSEquality)
-				experiment.EqualityDPFSKPACLProcessingNS = append(experiment.EqualityDPFSKPACLProcessingNS, timeEq)
-
-				// inequality
-				timeIneq := benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSInequality)
-				experiment.InequalityDPFSKPACLProcessingNS = append(experiment.InequalityDPFSKPACLProcessingNS, timeIneq)
-
-				// range
-				timeRange := benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSRange)
-				experiment.RangeDPFSKPACLProcessingNS = append(experiment.RangeDPFSKPACLProcessingNS, timeRange)
-			}
-
-			// VDPF PACL (symmetric key)
-			for trial := 0; trial < numTrials; trial++ {
-				// equality
-				timeEq := benchmarkPACLSymmetricKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
-				experiment.EqualityVDPFSKPACLProcessingNS = append(experiment.EqualityVDPFSKPACLProcessingNS, timeEq)
-
-				// inequality
-				timeIneq := benchmarkPACLSymmetricKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSInequality)
-				experiment.InequalityVDPFSKPACLProcessingNS = append(experiment.InequalityVDPFSKPACLProcessingNS, timeIneq)
-
-				// range
-				timeRange := benchmarkPACLSymmetricKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSRange)
-				experiment.RangeVDPFSKPACLProcessingNS = append(experiment.RangeVDPFSKPACLProcessingNS, timeRange)
-			}
-
-			fmt.Println("---------------------------------")
-			fmt.Printf("FSS domain: %v\n", fssDomain)
-			fmt.Printf("Num keys: %v\n", numKeys)
-			fmt.Println("---------------------------------")
-			fmt.Printf("DPF (x = a)              (size %v): %v\n", fssDomain, avg(experiment.EqualityBaselineProcessingNS))
-			fmt.Printf("DPF SK-PACL (x = a)      (size %v): %v\n", fssDomain, avg(experiment.EqualityDPFSKPACLProcessingNS))
-			fmt.Printf("DPF PACL (x = a)         (size %v): %v\n", fssDomain, avg(experiment.EqualityDPFPACLProcessingNS))
-			fmt.Printf("VDPF (x = a)             (size %v): %v\n", fssDomain, avg(experiment.EqualityBaselineVerProcessingNS))
-			fmt.Printf("VDPF SK PACL (x = a)     (size %v): %v\n", fssDomain, avg(experiment.EqualityVDPFSKPACLProcessingNS))
-			fmt.Printf("VDPF PACL (x = a)        (size %v): %v\n", fssDomain, avg(experiment.EqualityVDPFPACLProcessingNS))
-			fmt.Println("---------------------------------")
-			fmt.Printf("DPF (x < a)              (size %v): %v\n", fssDomain, avg(experiment.InequalityBaselineProcessingNS))
-			fmt.Printf("DPF SK-PACL (x < a)      (size %v): %v\n", fssDomain, avg(experiment.InequalityDPFSKPACLProcessingNS))
-			fmt.Printf("DPF PACL (x < a)         (size %v): %v\n", fssDomain, avg(experiment.InequalityDPFPACLProcessingNS))
-			fmt.Printf("VDPF (x < a)             (size %v): %v\n", fssDomain, avg(experiment.InequalityBaselineVerProcessingNS))
-			fmt.Printf("VDPF SK PACL (x < a)     (size %v): %v\n", fssDomain, avg(experiment.InequalityVDPFSKPACLProcessingNS))
-			fmt.Printf("VDPF PACL (x < a)        (size %v): %v\n", fssDomain, avg(experiment.InequalityVDPFPACLProcessingNS))
-			fmt.Println("---------------------------------")
-			fmt.Printf("DPF (a < x < b)          (size %v): %v\n", fssDomain, avg(experiment.RangeBaselineProcessingNS))
-			fmt.Printf("DPF SK-PACL (a < x < b)  (size %v): %v\n", fssDomain, avg(experiment.RangeDPFSKPACLProcessingNS))
-			fmt.Printf("DPF PACL (a < x < b)     (size %v): %v\n", fssDomain, avg(experiment.RangeDPFPACLProcessingNS))
-			fmt.Printf("VDPF (a < x < b)         (size %v): %v\n", fssDomain, avg(experiment.RangeBaselineVerProcessingNS))
-			fmt.Printf("VDPF SK PACL (a < x < b) (size %v): %v\n", fssDomain, avg(experiment.RangeVDPFSKPACLProcessingNS))
-			fmt.Printf("VDPF PACL (a < x < b)    (size %v): %v\n", fssDomain, avg(experiment.RangeVDPFPACLProcessingNS))
-			fmt.Println("---------------------------------")
-
-			experimentJSON, err := json.MarshalIndent(experiment, "", " ")
-			if err != nil {
-				panic(err)
-			}
-			ioutil.WriteFile("experiment"+fmt.Sprint(i)+".json", experimentJSON, 0644)
-			fmt.Println("File saved.")
-			i++
 		}
 	}
 }
@@ -375,14 +380,13 @@ func benchmarkPACLSymmetricKeyVFSS(
 	}
 
 	start := time.Now()
-	klsk, _, _ := paclsk.GenerateTestingKeyList(kl.NumKeys, kl.FSSDomain)
+	klsk, _, _ := paclsk.GenerateBenchmarkKeyList(kl.NumKeys, kl.FSSDomain, paclsk.Inclusion, kl.NumKeys)
 	klsk.Audit(
 		&paclsk.ProofShare{
-			DPFKey:        share.DPFKey,
-			PrfKey:        share.PrfKey,
-			ShareNumber:   0,
-			PredicateType: paclsk.PredicateType(share.PredicateType),
-			KeyShare:      paclsk.NewEmptySlot(klsk.StatSecurity / 8),
+			DPFKey:      share.DPFKey,
+			PrfKey:      share.PrfKey,
+			ShareNumber: 0,
+			KeyShare:    paclsk.NewEmptySlot(klsk.StatSecurity / 8),
 		})
 	totalTime += time.Since(start).Microseconds()
 

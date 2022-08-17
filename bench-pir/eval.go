@@ -17,6 +17,7 @@ func main() {
 
 	n := []int{16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304}
 	byteParams := []int{256, 512, 1024}
+	numTrials := 1
 
 	i := 0
 	for _, dbSize := range n {
@@ -32,7 +33,7 @@ func main() {
 			experiment.ServerPIRProcessingMS = make([]int64, 0)
 			experiment.ServerPIRPACLProcessingMS = make([]int64, 0)
 
-			for trial := 0; trial < 10; trial++ {
+			for trial := 0; trial < numTrials; trial++ {
 				pirTimeMS, bits := benchmarkPIR(dbSize, slots)
 				pirPACLTimeMS := benchmarkPIRPACL(dbSize, slots, bits)
 				experiment.ServerPIRProcessingMS = append(experiment.ServerPIRProcessingMS, pirTimeMS)
@@ -92,9 +93,9 @@ func benchmarkPIRPACL(dbSize int, slots []*Slot, bits []byte) int64 {
 }
 
 func benchmarkPACL(dbsize int) int64 {
-	domain := uint(math.Log2(float64(dbsize) + 1))
+	domain := uint(math.Log2(float64(dbsize)))
 	group := paclsposs.DefaultGroup()
-	kl, key, _ := paclsposs.GenerateBenchmarkKeyList(uint64(dbsize), domain, group)
+	kl, key, _ := paclsposs.GenerateBenchmarkKeyList(uint64(dbsize), domain, group, paclsposs.Equality, 0)
 
 	shares := kl.NewProof(0, key)
 
@@ -110,12 +111,13 @@ func benchmarkPACL(dbsize int) int64 {
 }
 
 func benchmarkSPoSSProofMS(group *algebra.Group) int64 {
-	start := time.Now()
 
 	pp := sposs.NewPublicParams(group)
 	gX := pp.Group.Field.MulIdentity()
 	additiveShareA, _ := pp.LinearShares(gX)
 	proofA, _ := pp.GenProof(pp.ExpField.AddIdentity())
+
+	start := time.Now()
 	auditShareA := pp.Audit(additiveShareA, proofA)
 	pp.CheckAudit(auditShareA, auditShareA)
 

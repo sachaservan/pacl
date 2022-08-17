@@ -104,7 +104,7 @@ func benchmarkPACLExpress(numMailboxes int) int64 {
 
 	// setup parameters
 	n := uint(math.Log2(float64(numMailboxes)))
-	kl, key, _ := paclsk.GenerateBenchmarkKeyList(uint64(numMailboxes), n)
+	kl, key, _ := paclsk.GenerateBenchmarkKeyList(uint64(numMailboxes), n, paclsk.Equality, 0)
 
 	shares := kl.NewProof(0, key)
 	auditB := kl.Audit(shares[1])
@@ -175,7 +175,8 @@ func benchmarkPACLSpectrum(numChannels int) int64 {
 	// setup parameters
 	group := paclsposs.DefaultGroup()
 	n := uint(math.Log2(float64(numChannels)))
-	kl, key, idx := paclsposs.GenerateBenchmarkKeyList(uint64(numChannels), n, group)
+	kl, key, idx := paclsposs.GenerateBenchmarkKeyList(
+		uint64(numChannels), n, group, paclsposs.Equality, 0)
 
 	// client-side computation (precomputed here because we're
 	// benchmarking the server overhead).

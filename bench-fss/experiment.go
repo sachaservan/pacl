@@ -2,6 +2,7 @@ package main
 
 type Experiment struct {
 	NumKeys                         uint64  `json:"num_keys"`
+	NumSubkeys                      uint64  `json:"num_subkeys"`
 	FSSDomain                       uint64  `json:"fss_domain"`
 	EqualityBaselineProcessingNS    []int64 `json:"equality_baseline_processing_ns"`
 	EqualityBaselineVerProcessingNS []int64 `json:"equality_baseline_ver_processing_ns"`
