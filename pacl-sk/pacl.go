@@ -4,21 +4,11 @@ import (
 	dpf "github.com/sachaservan/vdpf"
 )
 
-type PredicateType int
-
-const (
-	Equality  PredicateType = 0
-	Inclusion PredicateType = 1
-)
-
 type ProofShare struct {
 	DPFKey      *dpf.DPFKey // DPF key
 	PrfKey      dpf.PrfKey  // PRF key used for the PRG in DPF construction
 	ShareNumber uint
-
-	// PACL
-	PredicateType PredicateType
-	KeyShare      *Slot
+	KeyShare    *Slot
 }
 
 type AuditShare struct {
@@ -28,10 +18,6 @@ type AuditShare struct {
 func (kl *KeyListParams) NewProof(idx uint64, x *Slot) []*ProofShare {
 	if kl.NumKeys == 0 {
 		panic("list size is set to zero; something is wrong")
-	}
-
-	if idx >= kl.NumKeys {
-		panic("provided key index is too large")
 	}
 
 	// initialize the DPF
@@ -98,7 +84,7 @@ func (kl *KeyList) computeAudit(proof *ProofShare, bits []byte) *AuditShare {
 	accumulator := NewEmptySlot(kl.StatSecurity / 8)
 
 	for i := uint64(0); i < kl.NumKeys; i++ {
-		if bits[i]%2 == 1 {
+		if bits[i] == 1 {
 			// fmt.Println(kl.Keys[i])
 			XorSlots(accumulator, kl.Keys[i])
 		}

@@ -6,21 +6,11 @@ import (
 	dpf "github.com/sachaservan/vdpf"
 )
 
-type PredicateType int
-
-const (
-	Equality  PredicateType = 0
-	Inclusion PredicateType = 1
-)
-
 type ProofShare struct {
 	DPFKey      *dpf.DPFKey // DPF key
 	PrfKey      dpf.PrfKey  // PRF key used for the PRG in DPF construction
 	ShareNumber uint
-
-	// PACL
-	PredicateType PredicateType
-	KeyShare      *algebra.FieldElement
+	KeyShare    *algebra.FieldElement
 }
 
 type AuditShare struct {

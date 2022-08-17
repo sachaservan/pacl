@@ -2,6 +2,7 @@ package paclpk
 
 import (
 	"crypto/elliptic"
+	"math"
 	"math/big"
 	"math/rand"
 
@@ -9,12 +10,20 @@ import (
 	"github.com/sachaservan/pacl/ec"
 )
 
+type PredicateType int
+
+const (
+	Equality  PredicateType = 0
+	Inclusion PredicateType = 1
+)
+
 type KeyListParams struct {
-	FullDomain bool
-	NumKeys    uint64
-	FSSDomain  uint
-	KeyIndices []uint64
-	Curve      *ec.EC
+	FullDomain    bool
+	NumKeys       uint64
+	FSSDomain     uint
+	KeyIndices    []uint64
+	Curve         *ec.EC
+	PredicateType PredicateType
 }
 
 type KeyList struct {
@@ -30,6 +39,7 @@ func (kl *KeyList) CloneKeyList() *KeyList {
 	clone.FSSDomain = kl.FSSDomain
 	clone.FullDomain = kl.FullDomain
 	clone.KeyIndices = kl.KeyIndices
+	clone.PredicateType = kl.PredicateType
 
 	for i := uint64(0); i < kl.NumKeys; i++ {
 		clone.PublicKeys[i] = kl.PublicKeys[i].Copy()
@@ -41,7 +51,22 @@ func (kl *KeyList) CloneKeyList() *KeyList {
 // same as GenerateRandomKeyList but all keys are the same
 // this is useful for testing as generating the full list is time consuming
 // returns: a key list, a key, and the index of the associated public key
-func GenerateTestingKeyList(numKeys uint64, fssDomain uint, curve elliptic.Curve) (*KeyList, *algebra.FieldElement, uint64) {
+func GenerateTestingKeyList(
+	numKeys uint64,
+	fssDomain uint,
+	curve elliptic.Curve,
+	pred PredicateType,
+	numSubkeys uint64) (*KeyList, *algebra.FieldElement, uint64) {
+
+	if pred == Inclusion {
+		// increase the domain of the DPF to account for the extra
+		// evaluations (the subtree that expands to numSubkeys leaves)
+		fssDomain += uint(math.Ceil(math.Log2(float64(numSubkeys))))
+
+		// increase the total number of keys to account for the extra subkeys
+		// over which the verifiers must select the correct key
+		numKeys *= numSubkeys
+	}
 
 	c := &ec.EC{Curve: curve, Field: algebra.NewField(curve.Params().N)}
 	kl := KeyList{}
@@ -49,6 +74,7 @@ func GenerateTestingKeyList(numKeys uint64, fssDomain uint, curve elliptic.Curve
 	kl.PublicKeys = make([]*ec.Point, numKeys)
 	kl.NumKeys = numKeys
 	kl.FSSDomain = fssDomain
+	kl.PredicateType = pred
 	kl.KeyIndices = make([]uint64, numKeys)
 	kl.FullDomain = (1<<fssDomain == numKeys) // only applies when domain = #keys
 
@@ -59,18 +85,35 @@ func GenerateTestingKeyList(numKeys uint64, fssDomain uint, curve elliptic.Curve
 	}
 
 	keyElem := kl.Curve.Field.NewElement(new(big.Int).SetBytes(key))
+	idx := rand.Uint64() % numKeys
 
-	idx := rand.Uint64()
-	return &kl, keyElem, idx
+	return &kl, keyElem, kl.KeyIndices[idx]
 }
 
-func GenerateBenchmarkKeyList(numKeys uint64, fssDomain uint, curve elliptic.Curve) (*KeyList, *algebra.FieldElement, uint64) {
+func GenerateBenchmarkKeyList(
+	numKeys uint64,
+	fssDomain uint,
+	curve elliptic.Curve,
+	pred PredicateType,
+	numSubkeys uint64) (*KeyList, *algebra.FieldElement, uint64) {
+
+	if pred == Inclusion {
+		// increase the domain of the DPF to account for the extra
+		// evaluations (the subtree that expands to numSubkeys leaves)
+		fssDomain += uint(math.Ceil(math.Log2(float64(numSubkeys))))
+
+		// increase the total number of keys to account for the extra subkeys
+		// over which the verifiers must select the correct key
+		numKeys *= numSubkeys
+	}
+
 	c := &ec.EC{Curve: curve, Field: algebra.NewField(curve.Params().P)}
 	kl := KeyList{}
 	kl.KeyListParams.Curve = c
 	kl.PublicKeys = make([]*ec.Point, numKeys)
 	kl.NumKeys = numKeys
 	kl.FSSDomain = fssDomain
+	kl.PredicateType = pred
 	kl.KeyIndices = make([]uint64, numKeys)
 	kl.FullDomain = (1<<fssDomain == numKeys) // only applies when domain = #keys
 
@@ -83,8 +126,8 @@ func GenerateBenchmarkKeyList(numKeys uint64, fssDomain uint, curve elliptic.Cur
 
 	keyElem := kl.Curve.Field.NewElement(new(big.Int).SetBytes(key))
 
-	idx := rand.Uint64()
-	return &kl, keyElem, idx
+	idx := rand.Uint64() % numKeys
+	return &kl, keyElem, kl.KeyIndices[idx]
 }
 
 // sets g^x to g^-x

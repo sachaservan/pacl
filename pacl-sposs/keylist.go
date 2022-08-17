@@ -3,6 +3,7 @@ package paclsposs
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"math/rand"
 	"time"
@@ -19,16 +20,24 @@ const primeHexP = "88426e468d0e90c43ac3d7ff2713ec3e341b1ff2dbdc0f9ef8e7067e5e95d
 // (NOT the group of quadratic residues as commonly done)
 const generatorG = "5"
 
+type PredicateType int
+
+const (
+	Equality  PredicateType = 0
+	Inclusion PredicateType = 1
+)
+
 type KeyListParams struct {
-	FullDomain bool
-	NumKeys    uint64
-	FSSDomain  uint
-	KeyIndices []uint64
-	HKey1      dpf.HashKey    // hash key for VDPF (should be chosen by the verifiers, not the prover)
-	HKey2      dpf.HashKey    // hash key for VDPF (should be chosen by the verifiers, not the prover)
-	Group      *algebra.Group // multiplicative group of order q
-	Field      *algebra.Field // field of order p (elements of Group live in Field)
-	ProofPP    *sposs.PublicParams
+	FullDomain    bool
+	NumKeys       uint64
+	FSSDomain     uint
+	KeyIndices    []uint64
+	HKey1         dpf.HashKey    // hash key for VDPF (should be chosen by the verifiers, not the prover)
+	HKey2         dpf.HashKey    // hash key for VDPF (should be chosen by the verifiers, not the prover)
+	Group         *algebra.Group // multiplicative group of order q
+	Field         *algebra.Field // field of order p (elements of Group live in Field)
+	ProofPP       *sposs.PublicParams
+	PredicateType PredicateType
 }
 
 type KeyList struct {
@@ -63,13 +72,30 @@ func DefaultGroup() *algebra.Group {
 
 // generate a KeyList of size 'numKeys' where
 // each key is a random group element g**(alpha mod q) and where 0 <= alpha <= q-1
-func GenerateRandomKeyList(numKeys uint64, fssDomain uint, group *algebra.Group) *KeyList {
+func GenerateRandomKeyList(
+	numKeys uint64,
+	fssDomain uint,
+	group *algebra.Group,
+	pred PredicateType,
+	numSubkeys uint64) *KeyList {
+
+	if pred == Inclusion {
+		// increase the domain of the DPF to account for the extra
+		// evaluations (the subtree that expands to numSubkeys leaves)
+		fssDomain += uint(math.Ceil(math.Log2(float64(numSubkeys))))
+
+		// increase the total number of keys to account for the extra subkeys
+		// over which the verifiers must select the correct key
+		numKeys *= numSubkeys
+	}
+
 	kl := KeyList{}
 	kl.PublicKeys = make([]*algebra.GroupElement, numKeys)
 	kl.NumKeys = numKeys
 	kl.Group = group
 	kl.Field = group.Field
 	kl.FSSDomain = fssDomain
+	kl.PredicateType = pred
 	kl.KeyIndices = make([]uint64, numKeys)
 	kl.FullDomain = (1<<fssDomain == numKeys) // only applies when domain = #keys
 
@@ -85,7 +111,23 @@ func GenerateRandomKeyList(numKeys uint64, fssDomain uint, group *algebra.Group)
 // same as GenerateRandomKeyList but all keys are the same
 // this is useful for testing as generating the full list is time consuming
 // returns: a key list, a key, and the index of the associated public key
-func GenerateTestingKeyList(numKeys uint64, fssDomain uint, group *algebra.Group) (*KeyList, *algebra.FieldElement, uint64) {
+func GenerateTestingKeyList(
+	numKeys uint64,
+	fssDomain uint,
+	group *algebra.Group,
+	pred PredicateType,
+	numSubkeys uint64) (*KeyList, *algebra.FieldElement, uint64) {
+
+	if pred == Inclusion {
+		// increase the domain of the DPF to account for the extra
+		// evaluations (the subtree that expands to numSubkeys leaves)
+		fssDomain += uint(math.Ceil(math.Log2(float64(numSubkeys))))
+
+		// increase the total number of keys to account for the extra subkeys
+		// over which the verifiers must select the correct key
+		numKeys *= numSubkeys
+	}
+
 	kl := KeyList{}
 	kl.PublicKeys = make([]*algebra.GroupElement, numKeys)
 	kl.NumKeys = numKeys
@@ -108,12 +150,29 @@ func GenerateTestingKeyList(numKeys uint64, fssDomain uint, group *algebra.Group
 	return &kl, key, 0
 }
 
-func GenerateBenchmarkKeyList(numKeys uint64, fssDomain uint, group *algebra.Group) (*KeyList, *algebra.FieldElement, uint64) {
+func GenerateBenchmarkKeyList(
+	numKeys uint64,
+	fssDomain uint,
+	group *algebra.Group,
+	pred PredicateType,
+	numSubkeys uint64) (*KeyList, *algebra.FieldElement, uint64) {
+
+	if pred == Inclusion {
+		// increase the domain of the DPF to account for the extra
+		// evaluations (the subtree that expands to numSubkeys leaves)
+		fssDomain += uint(math.Ceil(math.Log2(float64(numSubkeys))))
+
+		// increase the total number of keys to account for the extra subkeys
+		// over which the verifiers must select the correct key
+		numKeys *= numSubkeys
+	}
+
 	kl := KeyList{}
 	kl.PublicKeys = make([]*algebra.GroupElement, numKeys)
 	kl.NumKeys = numKeys
 	kl.Group = group
 	kl.Field = group.Field
+	kl.PredicateType = pred
 	kl.FSSDomain = fssDomain
 	kl.KeyIndices = make([]uint64, numKeys)
 	kl.FullDomain = (1<<fssDomain == numKeys) // only applies when domain = #keys
@@ -144,6 +203,7 @@ func (kl *KeyList) CloneKeyList() *KeyList {
 	clone.FSSDomain = kl.FSSDomain
 	clone.FullDomain = kl.FullDomain
 	clone.KeyIndices = kl.KeyIndices
+	clone.PredicateType = kl.PredicateType
 
 	for i := uint64(0); i < kl.NumKeys; i++ {
 		clone.PublicKeys[i] = kl.PublicKeys[i].Copy()

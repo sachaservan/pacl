@@ -7,7 +7,10 @@ import (
 
 // test configuration parameters
 const TestNumKeys = 512
-const TestFSSDomain = 9
+const TestNumSubkeys = 10 // for inclusion predicate only
+const TestFSSDomain = 32
+const TestPredicate = Inclusion
+
 const BenchmarkNumKeys = 2000000
 const StatSecPar = 128
 
@@ -15,7 +18,8 @@ func TestProveAuditVerify(t *testing.T) {
 
 	group := DefaultGroup()
 
-	kl, key, idx := GenerateTestingKeyList(TestNumKeys, TestFSSDomain, group)
+	kl, key, idx := GenerateTestingKeyList(
+		TestNumKeys, TestFSSDomain, group, TestPredicate, TestNumSubkeys)
 
 	for i := 0; i < 10; i++ {
 		proofShares := kl.NewProof(idx, key)
@@ -33,7 +37,8 @@ func TestProveAuditVerify(t *testing.T) {
 		isValidKeyDPF := recoveredKey.Cmp(resExpected) == 0
 		isValidKeyDPFAlt := recoveredKey.Cmp(resExpectedAlt) == 0
 
-		fmt.Printf("isValidKeyDPF = %v, isValidKeyDPFAlt = %v\n", isValidKeyDPF, isValidKeyDPFAlt)
+		fmt.Printf("isValidKeyDPF = %v, isValidKeyDPFAlt = %v\n",
+			isValidKeyDPF, isValidKeyDPFAlt)
 
 		if !kl.CheckAudit(auditA, auditB) {
 			t.Fatalf("CheckAudit failed")
@@ -44,7 +49,8 @@ func TestProveAuditVerify(t *testing.T) {
 func BenchmarkBaseline(b *testing.B) {
 	numKeys := uint64(1000)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(numKeys, fssDomain, DefaultGroup())
+	kl, x, _ := GenerateBenchmarkKeyList(
+		numKeys, fssDomain, DefaultGroup(), TestPredicate, TestNumSubkeys)
 	shares := kl.NewProof(0, x)
 
 	b.ResetTimer()
@@ -58,7 +64,8 @@ func BenchmarkPACLSingle(b *testing.B) {
 
 	numKeys := uint64(1)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(numKeys, fssDomain, DefaultGroup())
+	kl, x, _ := GenerateBenchmarkKeyList(
+		numKeys, fssDomain, DefaultGroup(), TestPredicate, TestNumSubkeys)
 	shares := kl.NewProof(0, x)
 
 	b.ResetTimer()
@@ -73,7 +80,8 @@ func BenchmarkPACLMany(b *testing.B) {
 
 	numKeys := uint64(1000)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(numKeys, fssDomain, DefaultGroup())
+	kl, x, _ := GenerateBenchmarkKeyList(
+		numKeys, fssDomain, DefaultGroup(), TestPredicate, TestNumSubkeys)
 	shares := kl.NewProof(0, x)
 
 	b.ResetTimer()

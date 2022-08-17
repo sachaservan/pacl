@@ -7,14 +7,22 @@ import (
 
 // test configuration parameters
 const TestNumKeys = 512
-const TestFSSDomain = 10
+const TestNumSubkeys = 10 // for inclusion predicate only
+const TestFSSDomain = 32
+const TestPredicate = Inclusion
+
 const StatSecPar = 128
 const NumQueries = 100 // number of queries to run
 
 func TestProveAuditVerify(t *testing.T) {
 
 	for i := 0; i < NumQueries; i++ {
-		kl, key, idx := GenerateTestingKeyList(TestNumKeys, TestFSSDomain, elliptic.P256())
+		kl, key, idx := GenerateTestingKeyList(
+			TestNumKeys,
+			TestFSSDomain,
+			elliptic.P256(),
+			TestPredicate,
+			TestNumSubkeys)
 
 		proofShares := kl.NewProof(idx, key)
 
@@ -34,7 +42,12 @@ func BenchmarkBaseline(b *testing.B) {
 
 	numKeys := uint64(1000)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(numKeys, fssDomain, elliptic.P256())
+	kl, x, _ := GenerateBenchmarkKeyList(
+		numKeys,
+		fssDomain,
+		elliptic.P256(),
+		TestPredicate,
+		TestNumSubkeys)
 	shares := kl.NewProof(0, x)
 
 	b.ResetTimer()
@@ -48,7 +61,12 @@ func BenchmarkPACLSingle(b *testing.B) {
 
 	numKeys := uint64(1)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(numKeys, fssDomain, elliptic.P256())
+	kl, x, _ := GenerateBenchmarkKeyList(
+		numKeys,
+		fssDomain,
+		elliptic.P256(),
+		TestPredicate,
+		TestNumSubkeys)
 	shares := kl.NewProof(0, x)
 
 	b.ResetTimer()
@@ -63,7 +81,12 @@ func BenchmarkPACLMany(b *testing.B) {
 
 	numKeys := uint64(1024)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(numKeys, fssDomain, elliptic.P256())
+	kl, x, _ := GenerateBenchmarkKeyList(
+		numKeys,
+		fssDomain,
+		elliptic.P256(),
+		TestPredicate,
+		TestNumSubkeys)
 	shares := kl.NewProof(0, x)
 
 	b.ResetTimer()

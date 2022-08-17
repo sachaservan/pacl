@@ -1,14 +1,23 @@
 package paclsk
 
 import (
+	"math"
 	"math/rand"
 )
 
+type PredicateType int
+
+const (
+	Equality  PredicateType = 0
+	Inclusion PredicateType = 1
+)
+
 type KeyListParams struct {
-	FullDomain bool
-	NumKeys    uint64
-	FSSDomain  uint
-	KeyIndices []uint64
+	FullDomain    bool
+	NumKeys       uint64
+	FSSDomain     uint
+	KeyIndices    []uint64
+	PredicateType PredicateType
 }
 
 type KeyList struct {
@@ -17,13 +26,29 @@ type KeyList struct {
 	StatSecurity int // key statistical security (e.g., 128)
 }
 
-func GenerateTestingKeyList(numKeys uint64, fssDomain uint) (*KeyList, *Slot, uint64) {
+func GenerateTestingKeyList(
+	numKeys uint64,
+	fssDomain uint,
+	pred PredicateType,
+	numSubkeys uint64,
+) (*KeyList, *Slot, uint64) {
+
+	if pred == Inclusion {
+		// increase the domain of the DPF to account for the extra
+		// evaluations (the subtree that expands to numSubkeys leaves)
+		fssDomain += uint(math.Ceil(math.Log2(float64(numSubkeys))))
+
+		// increase the total number of keys to account for the extra subkeys
+		// over which the verifiers must select the correct key
+		numKeys *= numSubkeys
+	}
 
 	kl := KeyList{}
 	kl.Keys = make([]*Slot, numKeys)
 	kl.NumKeys = numKeys
 	kl.StatSecurity = 128
 	kl.FSSDomain = fssDomain
+	kl.PredicateType = pred
 	kl.KeyIndices = make([]uint64, numKeys)
 	kl.FullDomain = (1<<fssDomain == numKeys) // only applies when domain = #keys
 
@@ -34,12 +59,27 @@ func GenerateTestingKeyList(numKeys uint64, fssDomain uint) (*KeyList, *Slot, ui
 		kl.Keys[i] = NewSlot(slot.Data)
 	}
 
-	idx := rand.Uint64()
+	idx := rand.Uint64() % numKeys
 
-	return &kl, slot, idx
+	return &kl, kl.Keys[idx], kl.KeyIndices[idx]
 }
 
-func GenerateBenchmarkKeyList(numKeys uint64, fssDomain uint) (*KeyList, *Slot, uint64) {
+func GenerateBenchmarkKeyList(
+	numKeys uint64,
+	fssDomain uint,
+	pred PredicateType,
+	numSubkeys uint64,
+) (*KeyList, *Slot, uint64) {
+
+	if pred == Inclusion {
+		// increase the domain of the DPF to account for the extra
+		// evaluations (the subtree that expands to numSubkeys leaves)
+		fssDomain += uint(math.Ceil(math.Log2(float64(numSubkeys))))
+
+		// increase the total number of keys to account for the extra subkeys
+		// over which the verifiers must select the correct key
+		numKeys *= numSubkeys
+	}
 
 	kl := KeyList{}
 	kl.Keys = make([]*Slot, numKeys)
@@ -55,7 +95,9 @@ func GenerateBenchmarkKeyList(numKeys uint64, fssDomain uint) (*KeyList, *Slot, 
 		kl.Keys[i] = NewSlot(slot.Data)
 	}
 
-	return &kl, kl.Keys[0], kl.KeyIndices[0]
+	idx := rand.Uint64() % numKeys
+
+	return &kl, kl.Keys[idx], kl.KeyIndices[idx]
 }
 
 // computes an additive shares in a field that sum to z
