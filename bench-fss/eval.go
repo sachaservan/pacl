@@ -379,7 +379,9 @@ func benchmarkPACLSymmetricKeyVFSS(
 		}
 	}
 
-	klsk, _, _ := paclsk.GenerateBenchmarkKeyList(kl.NumKeys, kl.FSSDomain, paclsk.Inclusion, kl.NumKeys)
+	// note: kl.NumKeys already has the subkeys accounted for; thus we specify 0 subkeys here
+	// TODO: make this cleaner
+	klsk, _, _ := paclsk.GenerateBenchmarkKeyList(kl.NumKeys, kl.FSSDomain, paclsk.Equality, 0)
 
 	start := time.Now()
 	klsk.Audit(
