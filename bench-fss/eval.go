@@ -379,8 +379,9 @@ func benchmarkPACLSymmetricKeyVFSS(
 		}
 	}
 
-	start := time.Now()
 	klsk, _, _ := paclsk.GenerateBenchmarkKeyList(kl.NumKeys, kl.FSSDomain, paclsk.Inclusion, kl.NumKeys)
+
+	start := time.Now()
 	klsk.Audit(
 		&paclsk.ProofShare{
 			DPFKey:      share.DPFKey,
