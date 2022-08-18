@@ -61,7 +61,7 @@ func TestFullSPoSS(t *testing.T) {
 	}
 }
 
-func BenchmarkClientProof(b *testing.B) {
+func BenchmarkProve(b *testing.B) {
 	group := TestingGroup()
 	pp := NewPublicParams(group)
 
@@ -71,6 +71,51 @@ func BenchmarkClientProof(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		pp.GenProof(x)
+	}
+}
+
+func BenchmarkAudit(b *testing.B) {
+	group := TestingGroup()
+	pp := NewPublicParams(group)
+
+	x := pp.Group.Field.RandomElement()
+	gX := pp.Group.NewElement(x.Int).Value
+	proofA, _ := pp.GenProof(x)
+	additiveShareA, _ := pp.LinearShares(gX)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		pp.Audit(additiveShareA, proofA)
+	}
+}
+
+func BenchmarkVerify(b *testing.B) {
+	group := TestingGroup()
+	pp := NewPublicParams(group)
+
+	x := pp.Group.Field.RandomElement()
+	gX := pp.Group.NewElement(x.Int).Value
+	proofA, proofB := pp.GenProof(x)
+	additiveShareA, additiveShareB := pp.LinearShares(gX)
+	auditShareA := pp.Audit(additiveShareA, proofA)
+	auditShareB := pp.Audit(additiveShareB, proofB)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		pp.CheckAudit(auditShareA, auditShareB)
+	}
+}
+
+func BenchmarkExp(b *testing.B) {
+	group := TestingGroup()
+
+	_, x := group.RandomElement()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		group.NewElement(x)
 	}
 
 }
