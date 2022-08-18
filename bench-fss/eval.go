@@ -15,12 +15,18 @@ import (
 )
 
 const (
-	FSSType       int = iota
-	FSSEquality       = 0
-	FSSInequality     = 1
-	FSSRange          = 2
-	FSSDTree          = 3
+	FSSType     int = iota
+	FSSEquality     = 0
+	FSSRange        = 1
 )
+
+type BaselineKey struct {
+	Verifiable bool
+	HashKeys   [2]dpf.HashKey
+	PRFKey     dpf.PrfKey
+	DPFKey     *dpf.DPFKey
+	Indices    []uint64
+}
 
 func main() {
 
@@ -36,110 +42,128 @@ func main() {
 		for _, numKeys := range numEvalKeys {
 			for _, numSubkeys := range numEvalSubkeys {
 
-				klpk, xpk, _ := paclpk.GenerateBenchmarkKeyList(numKeys, fssDomain, elliptic.P256(), paclpk.Inclusion, numSubkeys)
-				klsk, xsk, _ := paclsk.GenerateBenchmarkKeyList(numKeys, fssDomain, paclsk.Inclusion, numSubkeys)
-				klsposs, xsposs, _ := paclsposs.GenerateBenchmarkKeyList(
+				//////////////////////////////////
+				// generate the baseline DPF and VDPF keys
+				//////////////////////////////////
+				baselineIndices := make([]uint64, numKeys)
+				prfKey := dpf.GeneratePRFKey()
+				hashKeys := dpf.GenerateVDPFHashKeys()
+
+				// init DPF
+				pf := dpf.ClientDPFInitialize(prfKey)
+				keyDPF, _ := pf.GenDPFKeys(1, fssDomain)
+
+				// init VDPF
+				pfver := dpf.ClientVDPFInitialize(prfKey, hashKeys)
+				keyVDPF, _ := pfver.GenDPFKeys(1, fssDomain)
+
+				for i := 0; i < int(numKeys); i++ {
+					baselineIndices[i] = rand.Uint64()
+				}
+
+				baselineDPFKey := &BaselineKey{
+					Verifiable: false,
+					PRFKey:     prfKey,
+					DPFKey:     keyDPF,
+					Indices:    baselineIndices,
+				}
+
+				baselineVDPFKey := &BaselineKey{
+					Verifiable: true,
+					HashKeys:   hashKeys,
+					PRFKey:     prfKey,
+					DPFKey:     keyVDPF,
+					Indices:    baselineIndices,
+				}
+				//////////////////////////////////
+
+				//////////////////////////////////
+				// setup the keylists for this set of parameters
+				//////////////////////////////////
+				klpk, xpk, idxpk := paclpk.GenerateBenchmarkKeyList(numKeys, fssDomain, elliptic.P256(), paclpk.Inclusion, numSubkeys)
+				klsk, xsk, idxsk := paclsk.GenerateBenchmarkKeyList(numKeys, fssDomain, paclsk.Inclusion, numSubkeys)
+				klsposs, xsposs, idxsposs := paclsposs.GenerateBenchmarkKeyList(
 					numKeys, fssDomain, paclsposs.DefaultGroup(), paclsposs.Inclusion, numSubkeys)
 
-				sharesPk := klpk.NewProof(0, xpk)
-				sharesSk := klsk.NewProof(0, xsk)
-				sharesSposs := klsposs.NewProof(0, xsposs)
+				// generate the PACL proofs
+				sharesPk := klpk.NewProof(idxpk, xpk)
+				sharesSk := klsk.NewProof(idxsk, xsk)
+				sharesSposs := klsposs.NewProof(idxsposs, xsposs)
+				//////////////////////////////////
 
+				// initialize the experiment for this set of parameters
 				experiment := &Experiment{
 					FSSDomain:  uint64(fssDomain),
 					NumKeys:    numKeys,
 					NumSubkeys: numSubkeys,
 				}
 
+				// WARMUP: do a trial run as a warmup
 				for trial := 0; trial < numTrials; trial++ {
-					// WARMUP
-					benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSEquality)
-					benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
-					benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSEquality)
+					benchmarkBaselineFSS(baselineDPFKey, fssDomain, FSSEquality)
+					benchmarkPACLSymmetricKeyFSS(baselineDPFKey, klsk, sharesSk[0], fssDomain, FSSEquality)
 				}
 
-				// (V)DPF evaluation baseline
+				// (V)DPF evaluation baselines
 				for trial := 0; trial < numTrials; trial++ {
-					// equality
-					timeEq := benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSEquality)
+					// DPF
+					timeEq := benchmarkBaselineFSS(baselineDPFKey, fssDomain, FSSEquality)
 					experiment.EqualityBaselineProcessingNS = append(experiment.EqualityBaselineProcessingNS, timeEq)
 
-					timeEq = benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
+					// VDPF
+					timeEq = benchmarkBaselineFSS(baselineVDPFKey, fssDomain, FSSEquality)
 					experiment.EqualityBaselineVerProcessingNS = append(experiment.EqualityBaselineVerProcessingNS, timeEq)
 
-					// inequality
-					timeIneq := benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSInequality)
-					experiment.InequalityBaselineProcessingNS = append(experiment.InequalityBaselineProcessingNS, timeIneq)
-
-					timeIneq = benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSInequality)
-					experiment.InequalityBaselineVerProcessingNS = append(experiment.InequalityBaselineVerProcessingNS, timeIneq)
-
-					// range
-					timeRange := benchmarkBaselineFSS(klpk, sharesPk[0], fssDomain, FSSRange)
+					// DMPF range
+					timeRange := benchmarkBaselineFSS(baselineDPFKey, fssDomain, FSSRange)
 					experiment.RangeBaselineProcessingNS = append(experiment.RangeBaselineProcessingNS, timeRange)
 
-					timeRange = benchmarkBaselineVFSS(klsposs, sharesSposs[0], fssDomain, FSSRange)
+					// VDMPF range
+					timeRange = benchmarkBaselineFSS(baselineVDPFKey, fssDomain, FSSRange)
 					experiment.RangeBaselineVerProcessingNS = append(experiment.RangeBaselineVerProcessingNS, timeRange)
-
 				}
 
 				// DPF PACL (public key)
 				for trial := 0; trial < numTrials; trial++ {
-					// equality
-					timeEq := benchmarkPACLPublicKeyFSS(klpk, sharesPk[0], fssDomain, FSSEquality)
+					// DPF with public key PACL
+					timeEq := benchmarkPACLPublicKeyFSS(baselineDPFKey, klpk, sharesPk[0], fssDomain, FSSEquality)
 					experiment.EqualityDPFPACLProcessingNS = append(experiment.EqualityDPFPACLProcessingNS, timeEq)
 
-					// inequality
-					timeIneq := benchmarkPACLPublicKeyFSS(klpk, sharesPk[0], fssDomain, FSSInequality)
-					experiment.InequalityDPFPACLProcessingNS = append(experiment.InequalityDPFPACLProcessingNS, timeIneq)
-
-					// range
-					timeRange := benchmarkPACLPublicKeyFSS(klpk, sharesPk[0], fssDomain, FSSRange)
+					// DMPF range with public key PACL
+					timeRange := benchmarkPACLPublicKeyFSS(baselineDPFKey, klpk, sharesPk[0], fssDomain, FSSRange)
 					experiment.RangeDPFPACLProcessingNS = append(experiment.RangeDPFPACLProcessingNS, timeRange)
 				}
 
 				// VDPF PACL (public key sposs)
 				for trial := 0; trial < numTrials; trial++ {
 					// equality
-					timeEq := benchmarkPACLPublicKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
+					timeEq := benchmarkPACLPublicKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSEquality)
 					experiment.EqualityVDPFPACLProcessingNS = append(experiment.EqualityVDPFPACLProcessingNS, timeEq)
 
-					// inequality
-					timeIneq := benchmarkPACLPublicKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSInequality)
-					experiment.InequalityVDPFPACLProcessingNS = append(experiment.InequalityVDPFPACLProcessingNS, timeIneq)
-
 					// range
-					timeRange := benchmarkPACLPublicKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSRange)
+					timeRange := benchmarkPACLPublicKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSRange)
 					experiment.RangeVDPFPACLProcessingNS = append(experiment.RangeVDPFPACLProcessingNS, timeRange)
 				}
 
 				// DPF PACL (symmetric key)
 				for trial := 0; trial < numTrials; trial++ {
 					// equality
-					timeEq := benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSEquality)
+					timeEq := benchmarkPACLSymmetricKeyFSS(baselineDPFKey, klsk, sharesSk[0], fssDomain, FSSEquality)
 					experiment.EqualityDPFSKPACLProcessingNS = append(experiment.EqualityDPFSKPACLProcessingNS, timeEq)
 
-					// inequality
-					timeIneq := benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSInequality)
-					experiment.InequalityDPFSKPACLProcessingNS = append(experiment.InequalityDPFSKPACLProcessingNS, timeIneq)
-
 					// range
-					timeRange := benchmarkPACLSymmetricKeyFSS(klsk, sharesSk[0], fssDomain, FSSRange)
+					timeRange := benchmarkPACLSymmetricKeyFSS(baselineDPFKey, klsk, sharesSk[0], fssDomain, FSSRange)
 					experiment.RangeDPFSKPACLProcessingNS = append(experiment.RangeDPFSKPACLProcessingNS, timeRange)
 				}
 
 				// VDPF PACL (symmetric key)
 				for trial := 0; trial < numTrials; trial++ {
 					// equality
-					timeEq := benchmarkPACLSymmetricKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSEquality)
+					timeEq := benchmarkPACLSymmetricKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSEquality)
 					experiment.EqualityVDPFSKPACLProcessingNS = append(experiment.EqualityVDPFSKPACLProcessingNS, timeEq)
 
-					// inequality
-					timeIneq := benchmarkPACLSymmetricKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSInequality)
-					experiment.InequalityVDPFSKPACLProcessingNS = append(experiment.InequalityVDPFSKPACLProcessingNS, timeIneq)
-
 					// range
-					timeRange := benchmarkPACLSymmetricKeyVFSS(klsposs, sharesSposs[0], fssDomain, FSSRange)
+					timeRange := benchmarkPACLSymmetricKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSRange)
 					experiment.RangeVDPFSKPACLProcessingNS = append(experiment.RangeVDPFSKPACLProcessingNS, timeRange)
 				}
 
@@ -154,13 +178,6 @@ func main() {
 				fmt.Printf("VDPF (x = a)             (size %v): %v\n", fssDomain, avg(experiment.EqualityBaselineVerProcessingNS))
 				fmt.Printf("VDPF SK PACL (x = a)     (size %v): %v\n", fssDomain, avg(experiment.EqualityVDPFSKPACLProcessingNS))
 				fmt.Printf("VDPF PACL (x = a)        (size %v): %v\n", fssDomain, avg(experiment.EqualityVDPFPACLProcessingNS))
-				fmt.Println("---------------------------------")
-				fmt.Printf("DPF (x < a)              (size %v): %v\n", fssDomain, avg(experiment.InequalityBaselineProcessingNS))
-				fmt.Printf("DPF SK-PACL (x < a)      (size %v): %v\n", fssDomain, avg(experiment.InequalityDPFSKPACLProcessingNS))
-				fmt.Printf("DPF PACL (x < a)         (size %v): %v\n", fssDomain, avg(experiment.InequalityDPFPACLProcessingNS))
-				fmt.Printf("VDPF (x < a)             (size %v): %v\n", fssDomain, avg(experiment.InequalityBaselineVerProcessingNS))
-				fmt.Printf("VDPF SK PACL (x < a)     (size %v): %v\n", fssDomain, avg(experiment.InequalityVDPFSKPACLProcessingNS))
-				fmt.Printf("VDPF PACL (x < a)        (size %v): %v\n", fssDomain, avg(experiment.InequalityVDPFPACLProcessingNS))
 				fmt.Println("---------------------------------")
 				fmt.Printf("DPF (a < x < b)          (size %v): %v\n", fssDomain, avg(experiment.RangeBaselineProcessingNS))
 				fmt.Printf("DPF SK-PACL (a < x < b)  (size %v): %v\n", fssDomain, avg(experiment.RangeDPFSKPACLProcessingNS))
@@ -192,8 +209,7 @@ func avg(arr []int64) float64 {
 }
 
 func benchmarkBaselineFSS(
-	kl *paclpk.KeyList,
-	share *paclpk.ProofShare,
+	key *BaselineKey,
 	fssDomain uint,
 	fssType int) int64 {
 
@@ -201,65 +217,17 @@ func benchmarkBaselineFSS(
 
 	if fssType == FSSEquality {
 		// equality is just DPF
-		share.DPFKey = randomizeDPFKey(share.DPFKey)
+		key.DPFKey = randomizeDPFKey(key.DPFKey)
 		start := time.Now()
-		kl.ExpandDPF(share)
+		expandBaselineDPF(key)
 		totalTime += time.Since(start).Microseconds()
-	} else if fssType == FSSInequality {
-		// (blackbox) inequality is logn invocations of a DPF
-		for i := uint(0); i < fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
-			start := time.Now()
-			kl.ExpandDPF(share)
-			totalTime += time.Since(start).Microseconds()
-		}
+
 	} else if fssType == FSSRange {
 		// (blackbox) inequality is 2*logn invocations of a DPF
 		for i := uint(0); i < 2*fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
+			key.DPFKey = randomizeDPFKey(key.DPFKey)
 			start := time.Now()
-			kl.ExpandDPF(share)
-			totalTime += time.Since(start).Microseconds()
-		}
-	} else if fssType == FSSDTree {
-		// for each level (node), we evaluate one DPF
-		// over a 32 bit domain.
-		for i := uint(0); i < 2*fssDomain; i++ {
-			//TODO:
-		}
-	}
-
-	return totalTime
-}
-
-func benchmarkBaselineVFSS(
-	kl *paclsposs.KeyList,
-	share *paclsposs.ProofShare,
-	fssDomain uint,
-	fssType int) int64 {
-
-	totalTime := int64(0)
-
-	if fssType == FSSEquality {
-		// equality is just DPF
-		share.DPFKey = randomizeDPFKey(share.DPFKey)
-		start := time.Now()
-		kl.ExpandVDPF(share)
-		totalTime += time.Since(start).Microseconds()
-	} else if fssType == FSSInequality {
-		// (blackbox) inequality is logn invocations of a DPF
-		for i := uint(0); i < fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
-			start := time.Now()
-			kl.ExpandVDPF(share)
-			totalTime += time.Since(start).Microseconds()
-		}
-	} else if fssType == FSSRange {
-		// (blackbox) inequality is 2*logn invocations of a DPF
-		for i := uint(0); i < 2*fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
-			start := time.Now()
-			kl.ExpandVDPF(share)
+			expandBaselineDPF(key)
 			totalTime += time.Since(start).Microseconds()
 		}
 	}
@@ -268,6 +236,7 @@ func benchmarkBaselineVFSS(
 }
 
 func benchmarkPACLPublicKeyFSS(
+	key *BaselineKey,
 	kl *paclpk.KeyList,
 	share *paclpk.ProofShare,
 	fssDomain uint,
@@ -275,30 +244,18 @@ func benchmarkPACLPublicKeyFSS(
 
 	totalTime := int64(0)
 
-	if fssType == FSSEquality {
-		// equality is just DPF
-		share.DPFKey = randomizeDPFKey(share.DPFKey)
-
-	} else if fssType == FSSInequality {
-
-		// (blackbox) inequality is logn invocations of a DPF
-		for i := uint(0); i < fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
-			start := time.Now()
-			kl.ExpandDPF(share)
-			totalTime += time.Since(start).Microseconds()
-		}
-
-	} else if fssType == FSSRange {
+	if fssType == FSSRange {
 		// (blackbox) inequality is 2*logn invocations of a DPF
-		for i := uint(0); i < 2*fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
+		// 2*fssDomain-1 because the last DPF evaluation is implicit in Audit
+		for i := uint(0); i < 2*fssDomain-1; i++ {
+			key.DPFKey = randomizeDPFKey(key.DPFKey)
 			start := time.Now()
-			kl.ExpandDPF(share)
+			expandBaselineDPF(key)
 			totalTime += time.Since(start).Microseconds()
 		}
 	}
 
+	share.DPFKey = randomizeDPFKey(share.DPFKey)
 	start := time.Now()
 	kl.Audit(share)
 	totalTime += time.Since(start).Microseconds()
@@ -307,6 +264,7 @@ func benchmarkPACLPublicKeyFSS(
 }
 
 func benchmarkPACLSymmetricKeyFSS(
+	key *BaselineKey,
 	kl *paclsk.KeyList,
 	share *paclsk.ProofShare,
 	fssDomain uint,
@@ -314,30 +272,18 @@ func benchmarkPACLSymmetricKeyFSS(
 
 	totalTime := int64(0)
 
-	if fssType == FSSEquality {
-		// equality is just DPF
-		share.DPFKey = randomizeDPFKey(share.DPFKey)
-
-	} else if fssType == FSSInequality {
-
-		// (blackbox) inequality is logn invocations of a DPF
-		for i := uint(0); i < fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
-			start := time.Now()
-			kl.ExpandDPF(share)
-			totalTime += time.Since(start).Microseconds()
-		}
-
-	} else if fssType == FSSRange {
+	if fssType == FSSRange {
 		// (blackbox) inequality is 2*logn invocations of a DPF
-		for i := uint(0); i < 2*fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
+		// 2*fssDomain-1 because the last DPF evaluation is implicit in Audit
+		for i := uint(0); i < 2*fssDomain-1; i++ {
+			key.DPFKey = randomizeDPFKey(key.DPFKey)
 			start := time.Now()
-			kl.ExpandDPF(share)
+			expandBaselineDPF(key)
 			totalTime += time.Since(start).Microseconds()
 		}
 	}
 
+	share.DPFKey = randomizeDPFKey(share.DPFKey)
 	start := time.Now()
 	kl.Audit(share)
 	totalTime += time.Since(start).Microseconds()
@@ -346,6 +292,7 @@ func benchmarkPACLSymmetricKeyFSS(
 }
 
 func benchmarkPACLSymmetricKeyVFSS(
+	key *BaselineKey,
 	kl *paclsposs.KeyList,
 	share *paclsposs.ProofShare,
 	fssDomain uint,
@@ -353,51 +300,49 @@ func benchmarkPACLSymmetricKeyVFSS(
 
 	totalTime := int64(0)
 
-	if fssType == FSSEquality {
-		// equality is just DPF
-		share.DPFKey = randomizeDPFKey(share.DPFKey)
-		start := time.Now()
-		kl.ExpandVDPF(share)
-		totalTime += time.Since(start).Microseconds()
+	// TODO: this benchmark has sloppy edge cases
+	// because we want to run the VDPF but then not run SPoSS so what happens
+	// is that we first run the Expand (which expands to N*l values)
+	// and then compute the xors with the keys.
+	// This could use some cleaned up
 
-	} else if fssType == FSSInequality {
-
-		// (blackbox) inequality is logn invocations of a DPF
-		for i := uint(0); i < fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
-			start := time.Now()
-			kl.ExpandVDPF(share)
-			totalTime += time.Since(start).Microseconds()
-		}
-
-	} else if fssType == FSSRange {
+	if fssType == FSSRange {
 		// (blackbox) inequality is 2*logn invocations of a DPF
-		for i := uint(0); i < 2*fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
+		// 2*fssDomain-1 because the last DPF evaluation is implicit in Audit
+		for i := uint(0); i < 2*fssDomain-1; i++ {
+			key.DPFKey = randomizeDPFKey(key.DPFKey)
 			start := time.Now()
-			kl.ExpandVDPF(share)
+			expandBaselineDPF(key)
 			totalTime += time.Since(start).Microseconds()
 		}
 	}
 
-	// note: kl.NumKeys already has the subkeys accounted for; thus we specify 0 subkeys here
-	// TODO: make this cleaner
-	klsk, _, _ := paclsk.GenerateBenchmarkKeyList(kl.NumKeys, kl.FSSDomain, paclsk.Equality, 0)
-
+	share.DPFKey = randomizeDPFKey(share.DPFKey)
 	start := time.Now()
-	klsk.Audit(
-		&paclsk.ProofShare{
-			DPFKey:      share.DPFKey,
-			PrfKey:      share.PrfKey,
-			ShareNumber: 0,
-			KeyShare:    paclsk.NewEmptySlot(klsk.StatSecurity / 8),
-		})
+	bits, _ := kl.ExpandVDPF(share)
+	totalTime += time.Since(start).Microseconds()
+
+	// make a bunch of random symmetric keys
+	// bits is suppposed to si
+	slots := make([]*paclsk.Slot, kl.NumKeys)
+	for i := 0; i < len(slots); i++ {
+		slots[i] = paclsk.NewRandomSlot(16) // symmetric key is 16 bytes
+	}
+
+	start = time.Now()
+	accumulator := paclsk.NewEmptySlot(16)
+	for i := 0; i < len(slots); i++ {
+		if bits[i]%2 == 1 {
+			paclsk.XorSlots(accumulator, slots[i])
+		}
+	}
 	totalTime += time.Since(start).Microseconds()
 
 	return totalTime
 }
 
 func benchmarkPACLPublicKeyVFSS(
+	key *BaselineKey,
 	kl *paclsposs.KeyList,
 	share *paclsposs.ProofShare,
 	fssDomain uint,
@@ -405,35 +350,33 @@ func benchmarkPACLPublicKeyVFSS(
 
 	totalTime := int64(0)
 
-	if fssType == FSSEquality {
-		// equality is just DPF
-		share.DPFKey = randomizeDPFKey(share.DPFKey)
-
-	} else if fssType == FSSInequality {
-
-		// (blackbox) inequality is logn invocations of a DPF
-		for i := uint(0); i < fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
-			start := time.Now()
-			kl.ExpandVDPF(share)
-			totalTime += time.Since(start).Microseconds()
-		}
-
-	} else if fssType == FSSRange {
+	if fssType == FSSRange {
 		// (blackbox) inequality is 2*logn invocations of a DPF
-		for i := uint(0); i < 2*fssDomain; i++ {
-			share.DPFKey = randomizeDPFKey(share.DPFKey)
+		// 2*fssDomain-1 because the last DPF evaluation is implicit in Audit
+		for i := uint(0); i < 2*fssDomain-1; i++ {
+			key.DPFKey = randomizeDPFKey(key.DPFKey)
 			start := time.Now()
-			kl.ExpandVDPF(share)
+			expandBaselineDPF(key)
 			totalTime += time.Since(start).Microseconds()
 		}
 	}
 
+	share.DPFKey = randomizeDPFKey(share.DPFKey)
 	start := time.Now()
 	kl.Audit(share)
 	totalTime += time.Since(start).Microseconds()
 
 	return totalTime
+}
+
+func expandBaselineDPF(key *BaselineKey) {
+	if key.Verifiable {
+		pf := dpf.ServerVDPFInitialize(key.PRFKey, key.HashKeys)
+		pf.BatchVerEval(key.DPFKey, key.Indices)
+	} else {
+		pf := dpf.ServerDPFInitialize(key.PRFKey)
+		pf.BatchEval(key.DPFKey, key.Indices)
+	}
 }
 
 func randomizeDPFKey(dpfKey *dpf.DPFKey) *dpf.DPFKey {
