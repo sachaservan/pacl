@@ -42,6 +42,8 @@ func main() {
 		for _, numKeys := range numEvalKeys {
 			for _, numSubkeys := range numEvalSubkeys {
 
+				amortization := int64(numKeys)
+
 				//////////////////////////////////
 				// generate the baseline DPF and VDPF keys
 				//////////////////////////////////
@@ -100,26 +102,32 @@ func main() {
 
 				// WARMUP: do a trial run as a warmup
 				for trial := 0; trial < numTrials; trial++ {
-					benchmarkBaselineFSS(baselineDPFKey, fssDomain, FSSEquality)
-					benchmarkPACLSymmetricKeyFSS(baselineDPFKey, klsk, sharesSk[0], fssDomain, FSSEquality)
+					benchmarkBaselineFSS(baselineDPFKey, fssDomain, FSSRange)
+					benchmarkBaselineFSS(baselineVDPFKey, fssDomain, FSSRange)
+					benchmarkPACLPublicKeyFSS(baselineDPFKey, klpk, sharesPk[0], fssDomain, FSSRange)
+					benchmarkPACLSymmetricKeyFSS(baselineDPFKey, klsk, sharesSk[0], fssDomain, FSSRange)
 				}
 
 				// (V)DPF evaluation baselines
 				for trial := 0; trial < numTrials; trial++ {
 					// DPF
 					timeEq := benchmarkBaselineFSS(baselineDPFKey, fssDomain, FSSEquality)
+					timeEq /= amortization
 					experiment.EqualityBaselineProcessingNS = append(experiment.EqualityBaselineProcessingNS, timeEq)
 
 					// VDPF
 					timeEq = benchmarkBaselineFSS(baselineVDPFKey, fssDomain, FSSEquality)
+					timeEq /= amortization
 					experiment.EqualityBaselineVerProcessingNS = append(experiment.EqualityBaselineVerProcessingNS, timeEq)
 
 					// DMPF range
 					timeRange := benchmarkBaselineFSS(baselineDPFKey, fssDomain, FSSRange)
+					timeRange /= amortization
 					experiment.RangeBaselineProcessingNS = append(experiment.RangeBaselineProcessingNS, timeRange)
 
 					// VDMPF range
 					timeRange = benchmarkBaselineFSS(baselineVDPFKey, fssDomain, FSSRange)
+					timeRange /= amortization
 					experiment.RangeBaselineVerProcessingNS = append(experiment.RangeBaselineVerProcessingNS, timeRange)
 				}
 
@@ -127,10 +135,12 @@ func main() {
 				for trial := 0; trial < numTrials; trial++ {
 					// DPF with public key PACL
 					timeEq := benchmarkPACLPublicKeyFSS(baselineDPFKey, klpk, sharesPk[0], fssDomain, FSSEquality)
+					timeEq /= amortization
 					experiment.EqualityDPFPACLProcessingNS = append(experiment.EqualityDPFPACLProcessingNS, timeEq)
 
 					// DMPF range with public key PACL
 					timeRange := benchmarkPACLPublicKeyFSS(baselineDPFKey, klpk, sharesPk[0], fssDomain, FSSRange)
+					timeRange /= amortization
 					experiment.RangeDPFPACLProcessingNS = append(experiment.RangeDPFPACLProcessingNS, timeRange)
 				}
 
@@ -138,10 +148,12 @@ func main() {
 				for trial := 0; trial < numTrials; trial++ {
 					// equality
 					timeEq := benchmarkPACLPublicKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSEquality)
+					timeEq /= amortization
 					experiment.EqualityVDPFPACLProcessingNS = append(experiment.EqualityVDPFPACLProcessingNS, timeEq)
 
 					// range
 					timeRange := benchmarkPACLPublicKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSRange)
+					timeRange /= amortization
 					experiment.RangeVDPFPACLProcessingNS = append(experiment.RangeVDPFPACLProcessingNS, timeRange)
 				}
 
@@ -149,10 +161,12 @@ func main() {
 				for trial := 0; trial < numTrials; trial++ {
 					// equality
 					timeEq := benchmarkPACLSymmetricKeyFSS(baselineDPFKey, klsk, sharesSk[0], fssDomain, FSSEquality)
+					timeEq /= amortization
 					experiment.EqualityDPFSKPACLProcessingNS = append(experiment.EqualityDPFSKPACLProcessingNS, timeEq)
 
 					// range
 					timeRange := benchmarkPACLSymmetricKeyFSS(baselineDPFKey, klsk, sharesSk[0], fssDomain, FSSRange)
+					timeRange /= amortization
 					experiment.RangeDPFSKPACLProcessingNS = append(experiment.RangeDPFSKPACLProcessingNS, timeRange)
 				}
 
@@ -160,10 +174,12 @@ func main() {
 				for trial := 0; trial < numTrials; trial++ {
 					// equality
 					timeEq := benchmarkPACLSymmetricKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSEquality)
+					timeEq /= amortization
 					experiment.EqualityVDPFSKPACLProcessingNS = append(experiment.EqualityVDPFSKPACLProcessingNS, timeEq)
 
 					// range
 					timeRange := benchmarkPACLSymmetricKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSRange)
+					timeRange /= amortization
 					experiment.RangeVDPFSKPACLProcessingNS = append(experiment.RangeVDPFSKPACLProcessingNS, timeRange)
 				}
 
