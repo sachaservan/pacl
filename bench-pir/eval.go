@@ -38,7 +38,7 @@ func main() {
 				pirPACLTimeMS := benchmarkPIRPACL(dbSize, slots, bits)
 				experiment.ServerPIRProcessingMS = append(experiment.ServerPIRProcessingMS, pirTimeMS)
 				experiment.ServerPIRPACLProcessingMS = append(experiment.ServerPIRPACLProcessingMS, pirPACLTimeMS)
-				fmt.Printf("Finished trial %v of %v\n", trial, 10)
+				fmt.Printf("Finished trial %v of %v\n", trial, numTrials)
 			}
 
 			fmt.Printf("PIR       (%v bytes per item with %v item DB): %v\n", slotSize, dbSize, experiment.ServerPIRProcessingMS[0])
