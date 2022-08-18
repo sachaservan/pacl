@@ -24,7 +24,7 @@ const (
 
 func main() {
 
-	numTrials := 10
+	numTrials := 1000
 
 	// amortize the proof verification across numEval
 	numEvalKeys := []uint64{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024}
@@ -46,8 +46,9 @@ func main() {
 				sharesSposs := klsposs.NewProof(0, xsposs)
 
 				experiment := &Experiment{
-					FSSDomain: uint64(fssDomain),
-					NumKeys:   numKeys,
+					FSSDomain:  uint64(fssDomain),
+					NumKeys:    numKeys,
+					NumSubkeys: numSubkeys,
 				}
 
 				for trial := 0; trial < numTrials; trial++ {
