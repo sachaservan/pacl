@@ -4,6 +4,7 @@ type Experiment struct {
 	NumKeys                         uint64  `json:"num_keys"`
 	NumSubkeys                      uint64  `json:"num_subkeys"`
 	FSSDomain                       uint64  `json:"fss_domain"`
+	GroupExponentiationNS           uint64  `json:"group_exp_ns"`
 	EqualityBaselineProcessingNS    []int64 `json:"equality_baseline_processing_ns"`
 	EqualityBaselineVerProcessingNS []int64 `json:"equality_baseline_ver_processing_ns"`
 	EqualityDPFPACLProcessingNS     []int64 `json:"equality_dpf_pacl_processing_ns"`

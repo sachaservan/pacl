@@ -30,6 +30,12 @@ func (g *Group) MulInv(a *GroupElement) *GroupElement {
 	return &GroupElement{newElement}
 }
 
+// exponentiate a group element by a scalar
+func (g *Group) Exp(a *GroupElement, b *FieldElement) *GroupElement {
+	newElement := g.Field.Exp(a.Value, b.Int)
+	return &GroupElement{newElement}
+}
+
 // new element g**alpha mod P = 2q+1
 func (g *Group) NewElement(a *big.Int) *GroupElement {
 	newElement := g.Field.Exp(g.G, a)

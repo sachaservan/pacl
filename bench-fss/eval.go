@@ -108,6 +108,18 @@ func main() {
 					benchmarkPACLSymmetricKeyFSS(baselineDPFKey, klsk, sharesSk[0], fssDomain, FSSRange)
 				}
 
+				// measure group exponentiation time
+				_, x := klsposs.Group.RandomElement()
+				xF := klsposs.ProofPP.ExpField.NewElement(x)
+				timeExp := time.Now()
+				gX := klsposs.Group.NewElement(x)
+
+				for trial := 0; trial < numTrials; trial++ {
+					gX = klsposs.Group.Exp(gX, xF) // group exponentiation
+				}
+
+				experiment.GroupExponentiationNS = uint64(time.Since(timeExp)) / uint64(amortization)
+
 				// (V)DPF evaluation baselines
 				for trial := 0; trial < numTrials; trial++ {
 					// DPF
