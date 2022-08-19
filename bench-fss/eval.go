@@ -118,29 +118,29 @@ func main() {
 					gX = klsposs.Group.Exp(gX, xF) // group exponentiation
 				}
 
-				experiment.GroupExponentiationNS = uint64(time.Since(timeExp).Nanoseconds()) / uint64(amortization*int64(numTrials))
+				experiment.GroupExponentiation = uint64(time.Since(timeExp).Microseconds()) / uint64(amortization*int64(numTrials))
 
 				// (V)DPF evaluation baselines
 				for trial := 0; trial < numTrials; trial++ {
 					// DPF
 					timeEq := benchmarkBaselineFSS(baselineDPFKey, fssDomain, FSSEquality)
 					timeEq /= amortization
-					experiment.EqualityBaselineProcessingNS = append(experiment.EqualityBaselineProcessingNS, timeEq)
+					experiment.EqualityBaselineProcessing = append(experiment.EqualityBaselineProcessing, timeEq)
 
 					// VDPF
 					timeEq = benchmarkBaselineFSS(baselineVDPFKey, fssDomain, FSSEquality)
 					timeEq /= amortization
-					experiment.EqualityBaselineVerProcessingNS = append(experiment.EqualityBaselineVerProcessingNS, timeEq)
+					experiment.EqualityBaselineVerProcessing = append(experiment.EqualityBaselineVerProcessing, timeEq)
 
 					// DMPF range
 					timeRange := benchmarkBaselineFSS(baselineDPFKey, fssDomain, FSSRange)
 					timeRange /= amortization
-					experiment.RangeBaselineProcessingNS = append(experiment.RangeBaselineProcessingNS, timeRange)
+					experiment.RangeBaselineProcessing = append(experiment.RangeBaselineProcessing, timeRange)
 
 					// VDMPF range
 					timeRange = benchmarkBaselineFSS(baselineVDPFKey, fssDomain, FSSRange)
 					timeRange /= amortization
-					experiment.RangeBaselineVerProcessingNS = append(experiment.RangeBaselineVerProcessingNS, timeRange)
+					experiment.RangeBaselineVerProcessing = append(experiment.RangeBaselineVerProcessing, timeRange)
 				}
 
 				// DPF PACL (public key)
@@ -148,12 +148,12 @@ func main() {
 					// DPF with public key PACL
 					timeEq := benchmarkPACLPublicKeyFSS(baselineDPFKey, klpk, sharesPk[0], fssDomain, FSSEquality)
 					timeEq /= amortization
-					experiment.EqualityDPFPACLProcessingNS = append(experiment.EqualityDPFPACLProcessingNS, timeEq)
+					experiment.EqualityDPFPACLProcessing = append(experiment.EqualityDPFPACLProcessing, timeEq)
 
 					// DMPF range with public key PACL
 					timeRange := benchmarkPACLPublicKeyFSS(baselineDPFKey, klpk, sharesPk[0], fssDomain, FSSRange)
 					timeRange /= amortization
-					experiment.RangeDPFPACLProcessingNS = append(experiment.RangeDPFPACLProcessingNS, timeRange)
+					experiment.RangeDPFPACLProcessing = append(experiment.RangeDPFPACLProcessing, timeRange)
 				}
 
 				// VDPF PACL (public key sposs)
@@ -161,12 +161,12 @@ func main() {
 					// equality
 					timeEq := benchmarkPACLPublicKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSEquality)
 					timeEq /= amortization
-					experiment.EqualityVDPFPACLProcessingNS = append(experiment.EqualityVDPFPACLProcessingNS, timeEq)
+					experiment.EqualityVDPFPACLProcessing = append(experiment.EqualityVDPFPACLProcessing, timeEq)
 
 					// range
 					timeRange := benchmarkPACLPublicKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSRange)
 					timeRange /= amortization
-					experiment.RangeVDPFPACLProcessingNS = append(experiment.RangeVDPFPACLProcessingNS, timeRange)
+					experiment.RangeVDPFPACLProcessing = append(experiment.RangeVDPFPACLProcessing, timeRange)
 				}
 
 				// DPF PACL (symmetric key)
@@ -174,12 +174,12 @@ func main() {
 					// equality
 					timeEq := benchmarkPACLSymmetricKeyFSS(baselineDPFKey, klsk, sharesSk[0], fssDomain, FSSEquality)
 					timeEq /= amortization
-					experiment.EqualityDPFSKPACLProcessingNS = append(experiment.EqualityDPFSKPACLProcessingNS, timeEq)
+					experiment.EqualityDPFSKPACLProcessing = append(experiment.EqualityDPFSKPACLProcessing, timeEq)
 
 					// range
 					timeRange := benchmarkPACLSymmetricKeyFSS(baselineDPFKey, klsk, sharesSk[0], fssDomain, FSSRange)
 					timeRange /= amortization
-					experiment.RangeDPFSKPACLProcessingNS = append(experiment.RangeDPFSKPACLProcessingNS, timeRange)
+					experiment.RangeDPFSKPACLProcessing = append(experiment.RangeDPFSKPACLProcessing, timeRange)
 				}
 
 				// VDPF PACL (symmetric key)
@@ -187,33 +187,33 @@ func main() {
 					// equality
 					timeEq := benchmarkPACLSymmetricKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSEquality)
 					timeEq /= amortization
-					experiment.EqualityVDPFSKPACLProcessingNS = append(experiment.EqualityVDPFSKPACLProcessingNS, timeEq)
+					experiment.EqualityVDPFSKPACLProcessing = append(experiment.EqualityVDPFSKPACLProcessing, timeEq)
 
 					// range
 					timeRange := benchmarkPACLSymmetricKeyVFSS(baselineVDPFKey, klsposs, sharesSposs[0], fssDomain, FSSRange)
 					timeRange /= amortization
-					experiment.RangeVDPFSKPACLProcessingNS = append(experiment.RangeVDPFSKPACLProcessingNS, timeRange)
+					experiment.RangeVDPFSKPACLProcessing = append(experiment.RangeVDPFSKPACLProcessing, timeRange)
 				}
 
 				fmt.Println("---------------------------------")
 				fmt.Printf("FSS domain:     %v\n", fssDomain)
 				fmt.Printf("Num keys:       %v\n", numKeys)
 				fmt.Printf("Num subkeys:    %v\n", numSubkeys)
-				fmt.Printf("Exponentiation: %v\n", experiment.GroupExponentiationNS)
+				fmt.Printf("Exponentiation: %v\n", experiment.GroupExponentiation)
 				fmt.Println("---------------------------------")
-				fmt.Printf("DPF (x = a)              (size %v): %v\n", fssDomain, avg(experiment.EqualityBaselineProcessingNS))
-				fmt.Printf("DPF SK-PACL (x = a)      (size %v): %v\n", fssDomain, avg(experiment.EqualityDPFSKPACLProcessingNS))
-				fmt.Printf("DPF PACL (x = a)         (size %v): %v\n", fssDomain, avg(experiment.EqualityDPFPACLProcessingNS))
-				fmt.Printf("VDPF (x = a)             (size %v): %v\n", fssDomain, avg(experiment.EqualityBaselineVerProcessingNS))
-				fmt.Printf("VDPF SK PACL (x = a)     (size %v): %v\n", fssDomain, avg(experiment.EqualityVDPFSKPACLProcessingNS))
-				fmt.Printf("VDPF PACL (x = a)        (size %v): %v\n", fssDomain, avg(experiment.EqualityVDPFPACLProcessingNS))
+				fmt.Printf("DPF (x = a)              (size %v): %v\n", fssDomain, avg(experiment.EqualityBaselineProcessing))
+				fmt.Printf("DPF SK-PACL (x = a)      (size %v): %v\n", fssDomain, avg(experiment.EqualityDPFSKPACLProcessing))
+				fmt.Printf("DPF PACL (x = a)         (size %v): %v\n", fssDomain, avg(experiment.EqualityDPFPACLProcessing))
+				fmt.Printf("VDPF (x = a)             (size %v): %v\n", fssDomain, avg(experiment.EqualityBaselineVerProcessing))
+				fmt.Printf("VDPF SK PACL (x = a)     (size %v): %v\n", fssDomain, avg(experiment.EqualityVDPFSKPACLProcessing))
+				fmt.Printf("VDPF PACL (x = a)        (size %v): %v\n", fssDomain, avg(experiment.EqualityVDPFPACLProcessing))
 				fmt.Println("---------------------------------")
-				fmt.Printf("DPF (a < x < b)          (size %v): %v\n", fssDomain, avg(experiment.RangeBaselineProcessingNS))
-				fmt.Printf("DPF SK-PACL (a < x < b)  (size %v): %v\n", fssDomain, avg(experiment.RangeDPFSKPACLProcessingNS))
-				fmt.Printf("DPF PACL (a < x < b)     (size %v): %v\n", fssDomain, avg(experiment.RangeDPFPACLProcessingNS))
-				fmt.Printf("VDPF (a < x < b)         (size %v): %v\n", fssDomain, avg(experiment.RangeBaselineVerProcessingNS))
-				fmt.Printf("VDPF SK PACL (a < x < b) (size %v): %v\n", fssDomain, avg(experiment.RangeVDPFSKPACLProcessingNS))
-				fmt.Printf("VDPF PACL (a < x < b)    (size %v): %v\n", fssDomain, avg(experiment.RangeVDPFPACLProcessingNS))
+				fmt.Printf("DPF (a < x < b)          (size %v): %v\n", fssDomain, avg(experiment.RangeBaselineProcessing))
+				fmt.Printf("DPF SK-PACL (a < x < b)  (size %v): %v\n", fssDomain, avg(experiment.RangeDPFSKPACLProcessing))
+				fmt.Printf("DPF PACL (a < x < b)     (size %v): %v\n", fssDomain, avg(experiment.RangeDPFPACLProcessing))
+				fmt.Printf("VDPF (a < x < b)         (size %v): %v\n", fssDomain, avg(experiment.RangeBaselineVerProcessing))
+				fmt.Printf("VDPF SK PACL (a < x < b) (size %v): %v\n", fssDomain, avg(experiment.RangeVDPFSKPACLProcessing))
+				fmt.Printf("VDPF PACL (a < x < b)    (size %v): %v\n", fssDomain, avg(experiment.RangeVDPFPACLProcessing))
 				fmt.Println("---------------------------------")
 
 				experimentJSON, err := json.MarshalIndent(experiment, "", " ")
