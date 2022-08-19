@@ -12,7 +12,7 @@ import (
 
 func main() {
 
-	n := []int{262144, 524288, 1048576, 2097152, 8388608}
+	n := []int{262144, 524288, 1048576, 2097152, 4194304, 8388608}
 
 	for i, numAccounts := range n {
 
@@ -27,7 +27,7 @@ func main() {
 			fmt.Printf("Finished trial %v of %v\n", trial, 10)
 		}
 
-		fmt.Printf("Auth time @ %v accounts: %v\n", numAccounts, experiment.AuthTimeMS)
+		fmt.Printf("Auth time @ %v accounts: %v\n", experiment.AuthTimeMS, numAccounts)
 
 		experimentJSON, _ := json.MarshalIndent(experiment, "", " ")
 		ioutil.WriteFile("experiment"+fmt.Sprint(i)+".json", experimentJSON, 0644)
