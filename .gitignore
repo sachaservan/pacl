@@ -10,6 +10,7 @@ bench-pir/bench-pir
 bench-anon/bench-anon
 bench-anon/bench-anon
 bench-fss/bench-fss
+bench-fss/bench-auth
 .DS_Store
 vdpf/src/test
 /vendor
