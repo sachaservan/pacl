@@ -118,7 +118,7 @@ func main() {
 					gX = klsposs.Group.Exp(gX, xF) // group exponentiation
 				}
 
-				experiment.GroupExponentiationNS = uint64(time.Since(timeExp)) / uint64(amortization*int64(numTrials))
+				experiment.GroupExponentiationNS = uint64(time.Since(timeExp).Nanoseconds()) / uint64(amortization*int64(numTrials))
 
 				// (V)DPF evaluation baselines
 				for trial := 0; trial < numTrials; trial++ {
