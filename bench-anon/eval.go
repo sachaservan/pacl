@@ -26,22 +26,22 @@ func main() {
 			NumKeys: uint64(numAccounts),
 		}
 		experiment.ServerExpressMS = make([]int64, 0)
-		experiment.ServerExpressCloakMS = make([]int64, 0)
+		experiment.ServerExpressPACLMS = make([]int64, 0)
 		experiment.ServerSpectrumMS = make([]int64, 0)
-		experiment.ServerSpectrumCloakMS = make([]int64, 0)
+		experiment.ServerSpectrumPACLMS = make([]int64, 0)
 
 		for trial := 0; trial < 10; trial++ {
 			experiment.ServerExpressMS = append(experiment.ServerExpressMS, benchmarkVanillaExpress(numAccounts))
-			experiment.ServerExpressCloakMS = append(experiment.ServerExpressCloakMS, benchmarkPACLExpress(numAccounts))
+			experiment.ServerExpressPACLMS = append(experiment.ServerExpressPACLMS, benchmarkPACLExpress(numAccounts))
 			experiment.ServerSpectrumMS = append(experiment.ServerSpectrumMS, benchmarkVanillaSpectrum(numAccounts))
-			experiment.ServerSpectrumCloakMS = append(experiment.ServerSpectrumCloakMS, benchmarkPACLSpectrum(numAccounts))
+			experiment.ServerSpectrumPACLMS = append(experiment.ServerSpectrumPACLMS, benchmarkPACLSpectrum(numAccounts))
 			fmt.Printf("Finished trial %v of %v\n", trial, 10)
 		}
 
 		fmt.Printf("Express          @ %v mailboxes: %v\n", numAccounts, experiment.ServerExpressMS[0])
-		fmt.Printf("Express (PACL)   @ %v mailboxes: %v\n", numAccounts, experiment.ServerExpressCloakMS[0])
+		fmt.Printf("Express (PACL)   @ %v mailboxes: %v\n", numAccounts, experiment.ServerExpressPACLMS[0])
 		fmt.Printf("Spectrum         @ %v mailboxes: %v\n", numAccounts, experiment.ServerSpectrumMS[0])
-		fmt.Printf("Spectrum (PACL)  @ %v mailboxes: %v\n", numAccounts, experiment.ServerSpectrumCloakMS[0])
+		fmt.Printf("Spectrum (PACL)  @ %v mailboxes: %v\n", numAccounts, experiment.ServerSpectrumPACLMS[0])
 
 		experimentJSON, _ := json.MarshalIndent(experiment, "", " ")
 		ioutil.WriteFile("experiment"+fmt.Sprint(i)+".json", experimentJSON, 0644)
