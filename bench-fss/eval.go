@@ -196,9 +196,10 @@ func main() {
 				}
 
 				fmt.Println("---------------------------------")
-				fmt.Printf("FSS domain:  %v\n", fssDomain)
-				fmt.Printf("Num keys:    %v\n", numKeys)
-				fmt.Printf("Num subkeys: %v\n", numSubkeys)
+				fmt.Printf("FSS domain:     %v\n", fssDomain)
+				fmt.Printf("Num keys:       %v\n", numKeys)
+				fmt.Printf("Num subkeys:    %v\n", numSubkeys)
+				fmt.Printf("Exponentiation: %v\n", experiment.GroupExponentiationNS))
 				fmt.Println("---------------------------------")
 				fmt.Printf("DPF (x = a)              (size %v): %v\n", fssDomain, avg(experiment.EqualityBaselineProcessingNS))
 				fmt.Printf("DPF SK-PACL (x = a)      (size %v): %v\n", fssDomain, avg(experiment.EqualityDPFSKPACLProcessingNS))
