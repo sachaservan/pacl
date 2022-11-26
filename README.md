@@ -1,8 +1,26 @@
-# Private Access Control Lists
+# Private Access Control Lists (PACL)
 
 Implementation of PACLs for DPFs and VDPFs.
 
+| **Code organization** ||
+| :--- | :---|
+| Implementation||
+| [pacl-pk/](pacl-pk/) | Implementation of the public-key (V)DPF-PACL construction|
+| [pacl-sk/](pacl-sk/) | Implementation of the secret-key (V)DPF-PACL construction|
+| [sposs/](sposs/) | Implementation of the Schnorr Proof over Secret Shares (SPoSS)|
+| [algebra/](algebra/) | Bare-bones implementation of fields and groups|
+| [ec/](ec/) | A wrapper for the P256 elliptic curve|
+| Evaluation and results||
+| [bench-fss/](bench-fss/) | DPF-PACLs and VDPF-PACLs benchmarks|
+| [bench-anon/](bench-anon/) | Anonymous communication benchmarks using VDPF-PACLs|
+| [bench-auth/](bench-auth/) | Anonymous authentication benchmarks using VDPF-PACLs|
+| [bench-pir/](bench-pir/) | PIR benchmarks using VDPF-PACLs|
+| [paper_results/](paper_results/) | Raw evaluation data (.json) used in the paper |
+
+
+
 ## Dependencies 
+* GMP 
 * Go 1.13 or higher 
 * OpenSSL 1.1.1f
 * GNU Make
@@ -10,18 +28,21 @@ Implementation of PACLs for DPFs and VDPFs.
 
 ## Getting everything to run (tested on Ubuntu, CentOS, and MacOS)
 
-|Install dependencies (Ubuntu): | Install dependencies (CentOS):|
-|--------------|-----------|
-|```sudo apt-get install build-essential``` |  ```sudo yum groupinstall 'Development Tools'```|
-|```sudo apt-get install cmake```| ```sudo yum install cmake```|
-|```sudo apt install libssl-dev```|```sudo yum install openssl-devel```|
-|```sudo apt-get install golang-go```| ```sudo yum install golang```|
-
+|Dependency |Install dependencies (Ubuntu): | Install dependencies (CentOS):|
+|--------------|--------------|-----------|
+|GMP library |```sudo apt-get install libgmp3-dev```| ```sudo yum install gmp-devel```|
+|Go |```sudo apt-get install golang-go```| ```sudo yum install golang```|
+|OpenSSL |```sudo apt install libssl-dev```|```sudo yum install openssl-devel```|
+|Make |```sudo apt-get install build-essential``` |  ```sudo yum groupinstall 'Development Tools'```|
+|Cmake |```sudo apt-get install cmake```| ```sudo yum install cmake```|
 
 For optimal performance, you should compile the C code with clang (approximately 10-20 percent faster than the default on some distributions).
-- Clang-11: On Ubuntu run ```sudo apt install clang```.  On CentOS, ```sudo yum install clang```.
-  - You'll also need llvm if you use clang. 
-- LLVM-AR: On Ubuntu run ```sudo apt install llvm```. On CentOS, ```sudo yum install llvm```.
+
+|Dependency |Install dependencies (Ubuntu): | Install dependencies (CentOS):|
+|--------------|--------------|-----------|
+|Clang-11 |```sudo apt install clang```| ```sudo yum install clang```|
+|LLVM-AR |```sudo apt install llvm```| ```sudo yum install llvm```|
+
 
 ### 0) initialize the VDPF submodule 
 ```
@@ -31,11 +52,22 @@ git submodule update --init --recursive
 ### 1) Compiling the C VDPF/DPF library
 ```
 go mod tidy
-cd src && make
+cd vdpf/src && make
 ```
 
 ### 2) Running the benchmarks
-COMING SOON
+
+| **Benchmarks** ||
+| :--- | :---|
+| FSS benchmarks | ```cd bench-fss && bash run.sh```|
+| Spectrum & Express | ```cd bench-anon && bash run.sh```|
+| Anonymous authentication | ```cd bench-auth && bash run.sh```|
+| Private Information Retrieval | ```cd bench-pir && bash run.sh```|
+
+### 3) Plotting! 
+
+COMING SOON...
+
 
 ## ⚠️ Important Warning
 <b>This implementation of is intended for *research purposes only*. The code has NOT been vetted by security experts. 
