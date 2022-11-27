@@ -66,7 +66,14 @@ cd vdpf/src && make
 
 ### 3) Plotting! 
 
-COMING SOON...
+Raw JSON data and plotting scripts are located in [paper_results/](paper_results/).
+```
+cd paper_results/
+python plot_fss.py --file fss.json
+python plot_vfss.py --file fss.json
+python plot_pir.py --file pir.json
+python plot_anon.py --file anon.json
+```
 
 
 ## ⚠️ Important Warning
