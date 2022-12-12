@@ -1,4 +1,4 @@
-# Private Access Control Lists (PACL)
+# Private Access Control Lists (PACLs)
 
 Implementation of PACLs for DPFs and VDPFs.
 
