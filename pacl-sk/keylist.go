@@ -31,7 +31,7 @@ func GenerateTestingKeyList(
 	fssDomain uint,
 	pred PredicateType,
 	numSubkeys uint64,
-) (*KeyList, *Slot, uint64) {
+) (*KeyList, *Slot, uint64, uint64) {
 
 	if pred == Inclusion {
 		// increase the domain of the DPF to account for the extra
@@ -61,7 +61,7 @@ func GenerateTestingKeyList(
 
 	idx := rand.Uint64() % numKeys
 
-	return &kl, kl.Keys[idx], kl.KeyIndices[idx]
+	return &kl, kl.Keys[idx], idx, kl.KeyIndices[idx]
 }
 
 func GenerateBenchmarkKeyList(
@@ -90,7 +90,7 @@ func GenerateBenchmarkKeyList(
 	kl.FullDomain = (1<<fssDomain == numKeys) // only applies when domain = #keys
 
 	for i := uint64(0); i < numKeys; i++ {
-		kl.KeyIndices[i] = rand.Uint64()
+		kl.KeyIndices[i] = rand.Uint64() % (1 << fssDomain)
 		slot := NewRandomSlot(kl.StatSecurity / 8)
 		kl.Keys[i] = NewSlot(slot.Data)
 	}

@@ -80,7 +80,7 @@ func GenerateTestingKeyList(
 
 	key, gkey, _ := kl.Curve.NewRandomPoint()
 	for i := uint64(0); i < numKeys; i++ {
-		kl.KeyIndices[i] = rand.Uint64()
+		kl.KeyIndices[i] = rand.Uint64() % (1 << fssDomain)
 		kl.PublicKeys[i] = gkey.Copy()
 	}
 
@@ -95,7 +95,7 @@ func GenerateBenchmarkKeyList(
 	fssDomain uint,
 	curve elliptic.Curve,
 	pred PredicateType,
-	numSubkeys uint64) (*KeyList, *algebra.FieldElement, uint64) {
+	numSubkeys uint64) (*KeyList, *algebra.FieldElement, uint64, uint64) {
 
 	if pred == Inclusion {
 		// increase the domain of the DPF to account for the extra
@@ -127,7 +127,7 @@ func GenerateBenchmarkKeyList(
 	keyElem := kl.Curve.Field.NewElement(new(big.Int).SetBytes(key))
 
 	idx := rand.Uint64() % numKeys
-	return &kl, keyElem, kl.KeyIndices[idx]
+	return &kl, keyElem, idx, kl.KeyIndices[idx]
 }
 
 // sets g^x to g^-x

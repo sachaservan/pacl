@@ -108,7 +108,7 @@ func GenerateRandomKeyList(
 	return &kl
 }
 
-// same as GenerateRandomKeyList but all keys are the same
+// same as GenerateTestingKeyList but all keys are the same
 // this is useful for testing as generating the full list is time consuming
 // returns: a key list, a key, and the index of the associated public key
 func GenerateTestingKeyList(
@@ -116,7 +116,7 @@ func GenerateTestingKeyList(
 	fssDomain uint,
 	group *algebra.Group,
 	pred PredicateType,
-	numSubkeys uint64) (*KeyList, *algebra.FieldElement, uint64) {
+	numSubkeys uint64) (*KeyList, *algebra.FieldElement, uint64, uint64) {
 
 	if pred == Inclusion {
 		// increase the domain of the DPF to account for the extra
@@ -143,11 +143,13 @@ func GenerateTestingKeyList(
 	key := kl.ProofPP.ExpField.RandomElement()
 	gkey := group.NewElement(key.Int)
 	for i := uint64(0); i < numKeys; i++ {
-		kl.KeyIndices[i] = rand.Uint64()
+		kl.KeyIndices[i] = rand.Uint64() % (1 << fssDomain)
 		kl.PublicKeys[i] = gkey.Copy()
 	}
 
-	return &kl, key, 0
+	idx := rand.Uint64() % numKeys
+
+	return &kl, key, idx, kl.KeyIndices[idx]
 }
 
 func GenerateBenchmarkKeyList(
@@ -155,7 +157,7 @@ func GenerateBenchmarkKeyList(
 	fssDomain uint,
 	group *algebra.Group,
 	pred PredicateType,
-	numSubkeys uint64) (*KeyList, *algebra.FieldElement, uint64) {
+	numSubkeys uint64) (*KeyList, *algebra.FieldElement, uint64, uint64) {
 
 	if pred == Inclusion {
 		// increase the domain of the DPF to account for the extra
@@ -184,11 +186,13 @@ func GenerateBenchmarkKeyList(
 	gkey := group.NewElement(key.Int)
 	kl.PublicKeys[0] = gkey
 	for i := uint64(1); i < numKeys; i++ {
-		kl.KeyIndices[i] = rand.Uint64()
+		kl.KeyIndices[i] = rand.Uint64() % (1 << fssDomain)
 		kl.PublicKeys[i] = group.Mul(kl.PublicKeys[i-1], gkey)
 	}
 
-	return &kl, key, 0
+	idx := rand.Uint64() % numKeys
+
+	return &kl, key, idx, kl.KeyIndices[idx]
 }
 
 func (kl *KeyList) CloneKeyList() *KeyList {

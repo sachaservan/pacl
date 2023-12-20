@@ -18,11 +18,11 @@ func TestProveAuditVerify(t *testing.T) {
 
 	group := DefaultGroup()
 
-	kl, key, idx := GenerateTestingKeyList(
+	kl, key, idx, keyIdx := GenerateTestingKeyList(
 		TestNumKeys, TestFSSDomain, group, TestPredicate, TestNumSubkeys)
 
 	for i := 0; i < 10; i++ {
-		proofShares := kl.NewProof(idx, key)
+		proofShares := kl.NewProof(keyIdx, key)
 
 		klB := kl.CloneKeyList()
 		klB.FlipSignOfKeys()
@@ -49,7 +49,7 @@ func TestProveAuditVerify(t *testing.T) {
 func BenchmarkBaseline(b *testing.B) {
 	numKeys := uint64(1000)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(
+	kl, x, _, _ := GenerateBenchmarkKeyList(
 		numKeys, fssDomain, DefaultGroup(), TestPredicate, TestNumSubkeys)
 	shares := kl.NewProof(0, x)
 
@@ -64,7 +64,7 @@ func BenchmarkPACLSingle(b *testing.B) {
 
 	numKeys := uint64(1)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(
+	kl, x, _, _ := GenerateBenchmarkKeyList(
 		numKeys, fssDomain, DefaultGroup(), TestPredicate, TestNumSubkeys)
 	shares := kl.NewProof(0, x)
 
@@ -80,7 +80,7 @@ func BenchmarkPACLMany(b *testing.B) {
 
 	numKeys := uint64(1000)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(
+	kl, x, _, _ := GenerateBenchmarkKeyList(
 		numKeys, fssDomain, DefaultGroup(), TestPredicate, TestNumSubkeys)
 	shares := kl.NewProof(0, x)
 
