@@ -16,9 +16,9 @@ const NumQueries = 100 // number of queries to run
 func TestProveAuditVerify(t *testing.T) {
 
 	for i := 0; i < NumQueries; i++ {
-		kl, key, idx := GenerateTestingKeyList(
+		kl, key, _, keyIdx := GenerateTestingKeyList(
 			TestNumKeys, TestFSSDomain, TestPredicate, TestNumSubkeys)
-		proofShares := kl.NewProof(idx, key)
+		proofShares := kl.NewProof(keyIdx, key)
 
 		auditA := kl.Audit(proofShares[0])
 		auditB := kl.Audit(proofShares[1])

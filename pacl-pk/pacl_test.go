@@ -42,7 +42,7 @@ func BenchmarkBaseline(b *testing.B) {
 
 	numKeys := uint64(1000)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(
+	kl, x, _, _ := GenerateBenchmarkKeyList(
 		numKeys,
 		fssDomain,
 		elliptic.P256(),
@@ -61,7 +61,7 @@ func BenchmarkPACLSingle(b *testing.B) {
 
 	numKeys := uint64(1)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(
+	kl, x, _, _ := GenerateBenchmarkKeyList(
 		numKeys,
 		fssDomain,
 		elliptic.P256(),
@@ -81,7 +81,7 @@ func BenchmarkPACLMany(b *testing.B) {
 
 	numKeys := uint64(1024)
 	fssDomain := uint(32)
-	kl, x, _ := GenerateBenchmarkKeyList(
+	kl, x, _, _ := GenerateBenchmarkKeyList(
 		numKeys,
 		fssDomain,
 		elliptic.P256(),
