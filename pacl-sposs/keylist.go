@@ -143,7 +143,7 @@ func GenerateTestingKeyList(
 	key := kl.ProofPP.ExpField.RandomElement()
 	gkey := group.NewElement(key.Int)
 	for i := uint64(0); i < numKeys; i++ {
-		kl.KeyIndices[i] = rand.Uint64() % numKeys
+		kl.KeyIndices[i] = rand.Uint64() % (1 << fssDomain)
 		kl.PublicKeys[i] = gkey.Copy()
 	}
 
