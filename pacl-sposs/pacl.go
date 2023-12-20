@@ -18,6 +18,7 @@ type ProofShare struct {
 
 type AuditShare struct {
 	Share    *sposs.AuditShare
+	BitSum   bool
 	Pi       []byte                // VDPF proof
 	KeyShare *algebra.FieldElement // for testing purposes
 }
@@ -79,8 +80,9 @@ func (kl *KeyList) CheckAudit(auditShares ...*AuditShare) bool {
 
 	vdpfOk := bytes.Equal(auditShares[0].Pi, auditShares[1].Pi)
 	spossOk := kl.ProofPP.CheckAudit(auditShares[0].Share, auditShares[1].Share)
+	sumOk := auditShares[0].BitSum != auditShares[1].BitSum
 
-	return vdpfOk && spossOk
+	return vdpfOk && spossOk && sumOk
 }
 
 func (kl *KeyList) ExpandVDPF(proof *ProofShare) ([]byte, []byte) {
@@ -105,13 +107,15 @@ func (kl *KeyList) computePrepareAudit(proof *ProofShare, bits []byte, pi []byte
 
 	// final result
 	accumulator := kl.Field.AddIdentity()
+	bitSum := false
 	for i := uint64(0); i < kl.NumKeys; i++ {
 		if bits[i] == 1 {
 			// add result to running sum (mod q)
 			kl.Field.AddInplace(accumulator, kl.PublicKeys[i].Value)
+			bitSum = !bitSum
 		}
 	}
 
 	spossAudit := kl.ProofPP.Audit(accumulator, proof.ProofShare)
-	return &AuditShare{Share: spossAudit, Pi: pi, KeyShare: accumulator}
+	return &AuditShare{Share: spossAudit, Pi: pi, KeyShare: accumulator, BitSum: bitSum}
 }
